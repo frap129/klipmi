@@ -40,6 +40,9 @@ class BasePage:
         self.state = state
         self.changePageCallback = changePageCallback
 
+    async def init(self):
+        """Implimented on a page-by-page basis"""
+
     async def onDisplayEvent(self, type: EventType, data):
         logging.info("Event %s data: %s", type, str(data))
 
@@ -57,6 +60,9 @@ class BootPage(BasePage):
     name = "boot"
     id = 0
 
+    async def init(self):
+        await self.state.display.set('version.val', 18)
+
 class MainPage(BasePage):
     name = "main"
-    id = 1
+    id = 15

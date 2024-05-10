@@ -56,14 +56,11 @@ class OpenQ1Display:
     def currentPage(self) -> BasePage:
         return self.backstack[-1]
 
-
     async def onDisplayEvent(self, type: EventType, data):
-        logging.debug("Display: Event %s data: %s", type, str(data))
         if type == EventType.RECONNECTED:
             # Re-init current page if we reconnect
             if len(self.backstack) != 0:
-                currentPage = self.backstack.pop()
-                await(self.changePage(currentPage.name))
+                await self.state.printer.queryKlippyStatus()
         else:
             logging.debug("Passing event to page %s", self.currentPage().name)
             asyncio.create_task(self.currentPage().onDisplayEvent(type, data))
@@ -97,7 +94,9 @@ class OpenQ1Display:
         else:
             self.backstack.append(self.pages[page](self.state, self.changePage))
 
-        await self.state.display.command("page %d" % self.currentPage().id)
+        await self.state.display.wakeup()
+        await self.state.display.command("page %d" % self.currentPage().id, 5)
+        await self.currentPage().init()
 
     async def init(self):
         await self.state.display.connect()
