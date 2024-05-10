@@ -26,7 +26,7 @@ from typing import List
 
 from .utils import SimpleDict
 from .config import *
-from .printer import Printer
+from .printer import Printer, PrinterStatus
 from .pages.base_page import BasePage
 
 
@@ -35,6 +35,8 @@ class State:
         self.options: Config
         self.display: TJC
         self.printer: Printer
+        self.printerData: dict = {}
+        self.fileList: dict = {}
         self.backstack: List[BasePage] = []
 
     def currentPage(self) -> BasePage:
@@ -57,7 +59,10 @@ class OpenQ1Display:
             self.onDisplayEvent,
         )
         self.state.printer = Printer(
-            self.state.options, self.onMoonrakerEvent, self.onPrinterEvent
+            self.state.options,
+            self.onConnectionEvent,
+            self.onPrinterStatusUpdate,
+            self.onFileListUpdate,
         )
 
     def registerPages(self) -> SimpleDict:
@@ -71,13 +76,28 @@ class OpenQ1Display:
         logging.debug("Passing event to page %s", self.state.currentPage().name)
         asyncio.create_task(self.state.currentPage().onDisplayEvent(type, data))
 
-    async def onMoonrakerEvent(self, state: str):
-        logging.info("Moonraker status: %s", state)
+    async def onConnectionEvent(self, status: PrinterStatus):
+        logging.info("Conenction status: %s", status)
+        if status == PrinterStatus.NOT_READY:
+            asyncio.create_task(self.changePage("boot"))
+            pass
+        elif status == PrinterStatus.READY:
+            asyncio.create_task(self.changePage("main"))
+            pass
+        elif status == PrinterStatus.STOPPED:
+            pass
+        elif status == PrinterStatus.MOONRAKER_ERR:
+            pass
+        elif status == PrinterStatus.KLIPPER_ERR:
+            pass
 
-    async def onPrinterEvent(self, method: str, data):
-        logging.debug("Printer: method %s data: %s", method, str(data))
-        logging.debug("Passing event to page %s", self.state.currentPage().name)
-        asyncio.create_task(self.state.currentPage().onPrinterEvent(method, data))
+    async def onPrinterStatusUpdate(self, data: dict):
+        self.state.printerData = data
+        asyncio.create_task(self.state.currentPage().onPrinterStatusUpdate(data))
+
+    async def onFileListUpdate(self, data: dict):
+        self.state.fileList = data
+        asyncio.create_task(self.state.currentPage().onFileListUpdate(data))
 
     async def changePage(self, page: str):
         if self.state.backstack[-2].name == page:

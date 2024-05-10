@@ -34,8 +34,11 @@ class BasePage:
     async def onDisplayEvent(self, type: EventType, data):
         logging.info("Event %s data: %s", type, str(data))
 
-    async def onPrinterEvent(self, method: str, data):
-        """TODO"""
+    async def onPrinterStatusUpdate(self, data: dict):
+        """Implimented on a page-by-page basis"""
+
+    async def onFileListUpdate(self, data: dict):
+        """NO-OP for non-files pages"""
 
     def changePage(self, page: str):
         self.changePageCallback(page)
