@@ -79,7 +79,7 @@ class Printer(MoonrakerListener):
         await self.client.disconnect()
 
     async def subscribe(self):
-        await self.client.request(
+        self.client.request(
             "printer.objects.subscribe",
             kwargs={
                 "objects": {
@@ -104,12 +104,20 @@ class Printer(MoonrakerListener):
             },
         )
 
+    async def queryKlippyStatus(self):
+        status = await self.client.get_klipper_status()
+        if status == "ready":
+            await self.stateCallback(PrinterStatus.READY)
+        elif status == "shutdown" or status == "disconnected":
+            await self.stateCallback(PrinterStatus.KLIPPER_ERR)
+
     async def state_changed(self, state: str | Literal[120]):
         printerStatus = PrinterStatus.NOT_READY
         if state == WEBSOCKET_STATE_CONNECTING:
             pass
         elif state == WEBSOCKET_STATE_CONNECTED:
             await self.subscribe()
+            await self.queryKlippyStatus()
         elif state == WEBSOCKET_STATE_STOPPING:
             pass
         elif state == WEBSOCKET_STATE_STOPPED:
