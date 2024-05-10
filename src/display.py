@@ -59,8 +59,14 @@ class OpenQ1Display:
 
     async def onDisplayEvent(self, type: EventType, data):
         logging.debug("Display: Event %s data: %s", type, str(data))
-        logging.debug("Passing event to page %s", self.currentPage().name)
-        asyncio.create_task(self.currentPage().onDisplayEvent(type, data))
+        if type == EventType.RECONNECTED:
+            # Re-init current page if we reconnect
+            if len(self.backstack) != 0:
+                currentPage = self.backstack.pop()
+                await(self.changePage(currentPage.name))
+        else:
+            logging.debug("Passing event to page %s", self.currentPage().name)
+            asyncio.create_task(self.currentPage().onDisplayEvent(type, data))
 
     async def onConnectionEvent(self, status: PrinterStatus):
         logging.info("Conenction status: %s", status)
@@ -96,7 +102,7 @@ class OpenQ1Display:
     async def init(self):
         await self.state.display.connect()
         await self.state.display.wakeup()
-        asyncio.create_task(self.changePage("boot"))
+        await self.changePage("boot")
         await self.state.printer.connect()
 
 
