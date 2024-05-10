@@ -21,7 +21,16 @@ import logging
 from collections.abc import Callable
 from nextion import EventType
 from state import State
+from utils import SimpleDict
 
+def registerPages() -> SimpleDict:
+    pages = SimpleDict()
+
+    # pages[BasePage.name] = BasePage
+    pages[BootPage.name] = BootPage
+    pages[MainPage.name] = MainPage
+
+    return pages
 
 class BasePage:
     name = ""
@@ -42,3 +51,12 @@ class BasePage:
 
     def changePage(self, page: str):
         self.changePageCallback(page)
+
+
+class BootPage(BasePage):
+    name = "boot"
+    id = 0
+
+class MainPage(BasePage):
+    name = "main"
+    id = 1

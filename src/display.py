@@ -24,11 +24,11 @@ from nextion import TJC, EventType
 from setproctitle import setproctitle
 from typing import List
 
-from utils import SimpleDict
 from state import State
 from config import *
 from printer import Printer, PrinterStatus
-from pages.base_page import BasePage
+from pages import registerPages, BasePage
+
 
 class OpenQ1Display:
     def __init__(self):
@@ -37,7 +37,7 @@ class OpenQ1Display:
             level=logging.DEBUG,
             handlers=[logging.StreamHandler()],
         )
-        self.pages = self.registerPages()
+        self.pages = registerPages()
         self.state: State = State()
         self.state.options = Config(getConfigPath())
         self.state.display = TJC(
@@ -56,11 +56,6 @@ class OpenQ1Display:
     def currentPage(self) -> BasePage:
         return self.backstack[-1]
 
-    def registerPages(self) -> SimpleDict:
-        pages = SimpleDict()
-        # pages[BasePage.name] = BasePage
-
-        return pages
 
     async def onDisplayEvent(self, type: EventType, data):
         logging.debug("Display: Event %s data: %s", type, str(data))
@@ -70,7 +65,7 @@ class OpenQ1Display:
     async def onConnectionEvent(self, status: PrinterStatus):
         logging.info("Conenction status: %s", status)
         if status == PrinterStatus.NOT_READY:
-            asyncio.create_task(self.changePage("boot"))
+            asyncio.create_task(self.changePage("0"))
             pass
         elif status == PrinterStatus.READY:
             asyncio.create_task(self.changePage("main"))
@@ -100,6 +95,7 @@ class OpenQ1Display:
 
     async def init(self):
         await self.state.display.connect()
+        await self.state.display.wakeup()
         await self.state.printer.connect()
 
 
