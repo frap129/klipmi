@@ -36,7 +36,7 @@ def getCommaSeparatedArgs(option, _, value, parser):
     setattr(parser.values, option.dest, value.split(","))
 
 
-def getConfigPath():
+def getConfigPath() -> str:
     parser = OptionParser()
     parser.add_option(
         "-c",
@@ -61,7 +61,7 @@ class Config:
     def __init__(self, configPath):
         self.reloadConfig(configPath)
 
-    def parse(self):
+    def parse(self) -> dict:
         with open(self.configPath, "rb") as f:
             try:
                 return tomllib.load(f)
@@ -73,5 +73,5 @@ class Config:
         self.configPath = configPath or CONFIG_PATH
         self.configDict = self.parse()
 
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> dict:
         return self.configDict[key]

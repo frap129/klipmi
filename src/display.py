@@ -23,36 +23,48 @@ import logging
 from nextion import TJC, EventType
 from setproctitle import setproctitle
 from .config import *
+from .printer import Printer
 
 
 class State:
     def __init__(self):
-        self.printer = None
-        self.display: TJC
         self.options: Config
+        self.display: TJC
+        self.printer: Printer
         self.backstack = []
 
 
 class OpenQ1Display:
     def __init__(self):
         setproctitle("OpenQ1Display")
-        self.state = State()
+        logging.basicConfig(
+            format="%(asctime)s - %(levelname)s - %(message)s",
+            level=logging.DEBUG,
+            handlers=[logging.StreamHandler()],
+        )
+        self.state: State = State()
         self.state.options = Config(getConfigPath())
         self.state.display = TJC(
             self.state.options[TABLE_DISPLAY][KEY_DEVICE],
             self.state.options[TABLE_DISPLAY][KEY_BAUD],
             self.onDisplayEvent,
         )
+        self.state.printer = Printer(
+            self.state.options, self.onMoonrakerEvent, self.onPrinterEvent
+        )
 
     async def onDisplayEvent(self, type: EventType, data):
         logging.info("Event %s data: %s", type, str(data))
 
+    async def onMoonrakerEvent(self, state: str):
+        logging.info("Moonraker status: %s", state)
+
+    async def onPrinterEvent(self, method: str, data):
+        """TODO"""
+
     async def init(self):
-        logging.basicConfig(
-            format="%(asctime)s - %(levelname)s - %(message)s",
-            level=logging.DEBUG,
-            handlers=[logging.StreamHandler()],
-        )
+        await self.state.display.connect()
+        await self.state.printer.connect()
 
 
 if __name__ == "__main__":
