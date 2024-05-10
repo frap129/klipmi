@@ -16,29 +16,17 @@ You should have received a copy of the GNU General Public License along with
 OpenQ1Display. If not, see <https://www.gnu.org/licenses/>. 
 """
 
-import logging
+from config import Config
+from nextion import TJC 
+from printer import Printer
 
-from collections.abc import Callable
-from nextion import EventType
-from state import State
+class State:
+    def __init__(self):
+        self.options: Config
+        self.display: TJC
+        self.printer: Printer
+        self.printerData: dict = {}
+        self.fileList: dict = {}
 
 
-class BasePage:
-    name = ""
-    id = -1
 
-    def __init__(self, state: State, changePageCallback: Callable):
-        self.state = state
-        self.changePageCallback = changePageCallback
-
-    async def onDisplayEvent(self, type: EventType, data):
-        logging.info("Event %s data: %s", type, str(data))
-
-    async def onPrinterStatusUpdate(self, data: dict):
-        """Implimented on a page-by-page basis"""
-
-    async def onFileListUpdate(self, data: dict):
-        """NO-OP for non-files pages"""
-
-    def changePage(self, page: str):
-        self.changePageCallback(page)

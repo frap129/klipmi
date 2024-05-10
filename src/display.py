@@ -24,24 +24,11 @@ from nextion import TJC, EventType
 from setproctitle import setproctitle
 from typing import List
 
-from .utils import SimpleDict
-from .config import *
-from .printer import Printer, PrinterStatus
-from .pages.base_page import BasePage
-
-
-class State:
-    def __init__(self):
-        self.options: Config
-        self.display: TJC
-        self.printer: Printer
-        self.printerData: dict = {}
-        self.fileList: dict = {}
-        self.backstack: List[BasePage] = []
-
-    def currentPage(self) -> BasePage:
-        return self.backstack[-1]
-
+from utils import SimpleDict
+from state import State
+from config import *
+from printer import Printer, PrinterStatus
+from pages.base_page import BasePage
 
 class OpenQ1Display:
     def __init__(self):
@@ -64,6 +51,10 @@ class OpenQ1Display:
             self.onPrinterStatusUpdate,
             self.onFileListUpdate,
         )
+        self.backstack: List[BasePage] = []
+
+    def currentPage(self) -> BasePage:
+        return self.backstack[-1]
 
     def registerPages(self) -> SimpleDict:
         pages = SimpleDict()
@@ -73,8 +64,8 @@ class OpenQ1Display:
 
     async def onDisplayEvent(self, type: EventType, data):
         logging.debug("Display: Event %s data: %s", type, str(data))
-        logging.debug("Passing event to page %s", self.state.currentPage().name)
-        asyncio.create_task(self.state.currentPage().onDisplayEvent(type, data))
+        logging.debug("Passing event to page %s", self.currentPage().name)
+        asyncio.create_task(self.currentPage().onDisplayEvent(type, data))
 
     async def onConnectionEvent(self, status: PrinterStatus):
         logging.info("Conenction status: %s", status)
@@ -93,17 +84,17 @@ class OpenQ1Display:
 
     async def onPrinterStatusUpdate(self, data: dict):
         self.state.printerData = data
-        asyncio.create_task(self.state.currentPage().onPrinterStatusUpdate(data))
+        asyncio.create_task(self.currentPage().onPrinterStatusUpdate(data))
 
     async def onFileListUpdate(self, data: dict):
         self.state.fileList = data
-        asyncio.create_task(self.state.currentPage().onFileListUpdate(data))
+        asyncio.create_task(self.currentPage().onFileListUpdate(data))
 
     async def changePage(self, page: str):
-        if self.state.backstack[-2].name == page:
-            self.state.backstack.pop()
+        if len(self.backstack) >= 2 and self.backstack[-2].name == page:
+            self.backstack.pop()
         else:
-            self.state.backstack.append(self.pages[page](self.state, self.changePage))
+            self.backstack.append(self.pages[page](self.state, self.changePage))
 
         await self.state.display.command("page %s" % page)
 

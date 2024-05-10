@@ -28,7 +28,7 @@ from moonraker_api.websockets.websocketclient import (
     WEBSOCKET_CONNECTION_TIMEOUT,
 )
 from typing import Any, Callable, Literal
-from .config import *
+from config import *
 
 
 class PrinterStatus(StrEnum):
@@ -79,7 +79,7 @@ class Printer(MoonrakerListener):
         await self.client.disconnect()
 
     async def subscribe(self):
-        self.client.request(
+        await self.client.request(
             "printer.objects.subscribe",
             kwargs={
                 "objects": {
@@ -117,19 +117,19 @@ class Printer(MoonrakerListener):
         elif state == WEBSOCKET_CONNECTION_TIMEOUT:
             printerStatus = PrinterStatus.MOONRAKER_ERR
 
-        self.stateCallback(printerStatus)
+        await self.stateCallback(printerStatus)
 
     async def on_notification(self, method: str, data: Any):
         if method == Notifications.KLIPPY_READY:
-            self.stateCallback(PrinterStatus.READY)
+            await self.stateCallback(PrinterStatus.READY)
         elif method == Notifications.KLIPPY_SHUTDOWN:
-            self.stateCallback(PrinterStatus.KLIPPER_ERR)
+            await self.stateCallback(PrinterStatus.KLIPPER_ERR)
         elif method == Notifications.KLIPPY_DISCONNECTED:
-            self.stateCallback(PrinterStatus.KLIPPER_ERR)
+            await self.stateCallback(PrinterStatus.KLIPPER_ERR)
         elif method == Notifications.STATUS_UPDATE:
-            self.printerCallback(json.load(data))
+            await self.printerCallback(json.load(data))
         elif method == Notifications.FILES_CHANGED:
-            self.filesCallback(json.load(data))
+            await self.filesCallback(json.load(data))
 
     async def on_exception(self, exception: type | BaseException) -> None:
         """TODO"""
