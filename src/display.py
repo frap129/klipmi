@@ -22,8 +22,12 @@ import logging
 
 from nextion import TJC, EventType
 from setproctitle import setproctitle
+from typing import List
+
+from .utils import SimpleDict
 from .config import *
 from .printer import Printer
+from .pages.base_page import BasePage
 
 
 class State:
@@ -31,17 +35,20 @@ class State:
         self.options: Config
         self.display: TJC
         self.printer: Printer
-        self.backstack = []
+        self.backstack: List[BasePage] = []
+
+    def currentPage(self) -> BasePage:
+        return self.backstack[-1]
 
 
 class OpenQ1Display:
     def __init__(self):
-        setproctitle("OpenQ1Display")
         logging.basicConfig(
             format="%(asctime)s - %(levelname)s - %(message)s",
             level=logging.DEBUG,
             handlers=[logging.StreamHandler()],
         )
+        self.pages = self.registerPages()
         self.state: State = State()
         self.state.options = Config(getConfigPath())
         self.state.display = TJC(
@@ -53,14 +60,32 @@ class OpenQ1Display:
             self.state.options, self.onMoonrakerEvent, self.onPrinterEvent
         )
 
+    def registerPages(self) -> SimpleDict:
+        pages = SimpleDict()
+        # pages[BasePage.name] = BasePage
+
+        return pages
+
     async def onDisplayEvent(self, type: EventType, data):
-        logging.info("Event %s data: %s", type, str(data))
+        logging.debug("Display: Event %s data: %s", type, str(data))
+        logging.debug("Passing event to page %s", self.state.currentPage().name)
+        asyncio.create_task(self.state.currentPage().onDisplayEvent(type, data))
 
     async def onMoonrakerEvent(self, state: str):
         logging.info("Moonraker status: %s", state)
 
     async def onPrinterEvent(self, method: str, data):
-        """TODO"""
+        logging.debug("Printer: method %s data: %s", method, str(data))
+        logging.debug("Passing event to page %s", self.state.currentPage().name)
+        asyncio.create_task(self.state.currentPage().onPrinterEvent(method, data))
+
+    async def changePage(self, page: str):
+        if self.state.backstack[-2].name == page:
+            self.state.backstack.pop()
+        else:
+            self.state.backstack.append(self.pages[page](self.state, self.changePage))
+
+        await self.state.display.command("page %s" % page)
 
     async def init(self):
         await self.state.display.connect()
@@ -68,6 +93,7 @@ class OpenQ1Display:
 
 
 if __name__ == "__main__":
+    setproctitle("OpenQ1Display")
     loop = asyncio.get_event_loop()
     app = OpenQ1Display()
     asyncio.ensure_future(app.init())

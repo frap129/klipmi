@@ -16,7 +16,6 @@ You should have received a copy of the GNU General Public License along with
 OpenQ1Display. If not, see <https://www.gnu.org/licenses/>. 
 """
 
-from types import FunctionType
 from moonraker_api import MoonrakerClient, MoonrakerListener
 from typing import Any, Callable
 from .config import *
