@@ -65,7 +65,7 @@ class OpenQ1Display:
     async def onConnectionEvent(self, status: PrinterStatus):
         logging.info("Conenction status: %s", status)
         if status == PrinterStatus.NOT_READY:
-            asyncio.create_task(self.changePage("0"))
+            asyncio.create_task(self.changePage("boot"))
             pass
         elif status == PrinterStatus.READY:
             asyncio.create_task(self.changePage("main"))
@@ -91,11 +91,12 @@ class OpenQ1Display:
         else:
             self.backstack.append(self.pages[page](self.state, self.changePage))
 
-        await self.state.display.command("page %s" % page)
+        await self.state.display.command("page %d" % self.currentPage().id)
 
     async def init(self):
         await self.state.display.connect()
         await self.state.display.wakeup()
+        asyncio.create_task(self.changePage("boot"))
         await self.state.printer.connect()
 
 
