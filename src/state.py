@@ -17,8 +17,9 @@ OpenQ1Display. If not, see <https://www.gnu.org/licenses/>.
 """
 
 from config import Config
-from nextion import TJC 
-from printer import Printer
+from nextion import TJC
+from printer import Printer, PrinterStatus
+
 
 class State:
     def __init__(self):
@@ -27,6 +28,4 @@ class State:
         self.printer: Printer
         self.printerData: dict = {}
         self.fileList: dict = {}
-
-
-
+        self.status: PrinterStatus = PrinterStatus.NOT_READY

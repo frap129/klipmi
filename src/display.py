@@ -58,15 +58,15 @@ class OpenQ1Display:
 
     async def onDisplayEvent(self, type: EventType, data):
         if type == EventType.RECONNECTED:
-            # Re-init current page if we reconnect
-            if len(self.backstack) != 0:
-                await self.state.printer.queryKlippyStatus()
+            # Force update status on reconnect
+            asyncio.create_task(self.onConnectionEvent(self.state.status))
         else:
             logging.debug("Passing event to page %s", self.currentPage().name)
             asyncio.create_task(self.currentPage().onDisplayEvent(type, data))
 
     async def onConnectionEvent(self, status: PrinterStatus):
         logging.info("Conenction status: %s", status)
+        self.state.status = status
         if status == PrinterStatus.NOT_READY:
             asyncio.create_task(self.changePage("boot"))
             pass
