@@ -17,6 +17,7 @@ OpenQ1Display. If not, see <https://www.gnu.org/licenses/>.
 """
 
 import json
+import logging
 
 from enum import StrEnum
 from moonraker_api import MoonrakerClient, MoonrakerListener
@@ -27,11 +28,11 @@ from moonraker_api.websockets.websocketclient import (
     WEBSOCKET_STATE_STOPPED,
     WEBSOCKET_CONNECTION_TIMEOUT,
 )
-from typing import Any, Callable, Literal
+from typing import Any, Awaitable, Callable, Literal
 from config import *
 
 
-class PrinterStatus(StrEnum):
+class PrinterState(StrEnum):
     NOT_READY = "not ready"
     READY = "ready"
     STOPPED = "stopped"
@@ -49,6 +50,23 @@ class Notifications(StrEnum):
 
 
 class Printer(MoonrakerListener):
+    _printerObjects: dict = {
+        "gcode_move": ["extrude_factor", "speed_factor", "homing_origin"],
+        "motion_report": ["live_position", "live_velocity"],
+        "fan": ["speed"],
+        "heater_bed": ["temperature", "target"],
+        "extruder": ["temperature", "target"],
+        "heater_generic heater_bed_outer": ["temperature", "target"],
+        "display_status": ["progress"],
+        "print_stats": [
+            "state",
+            "print_duration",
+            "filename",
+            "total_duration",
+            "info",
+        ],
+    }
+
     def __init__(
         self,
         options: Config,
@@ -61,6 +79,7 @@ class Printer(MoonrakerListener):
         self.filesCallback: Callable = filesCallback
         self.options: Config = options
         self.running: bool = False
+        self.status: dict = {}
         self.client: MoonrakerClient = MoonrakerClient(
             self,
             options[TABLE_MOONRAKER][KEY_HOST],
@@ -70,72 +89,64 @@ class Printer(MoonrakerListener):
 
     async def connect(self) -> bool | None:
         self.running = True
-        self.status = PrinterStatus.NOT_READY
+        self.state = PrinterState.NOT_READY
         return await self.client.connect()
 
     async def disconnect(self) -> None:
         self.running = False
-        self.state = PrinterStatus.STOPPED
+        await self._updateState(PrinterState.STOPPED)
         await self.client.disconnect()
 
     async def subscribe(self):
-        self.client.request(
-            "printer.objects.subscribe",
-            kwargs={
-                "objects": {
-                    "gcode_move": ["extrude_factor", "speed_factor", "homing_origin"],
-                    "motion_report": ["live_position", "live_velocity"],
-                    "fan": ["speed"],
-                    "heater_bed": ["temperature", "target"],
-                    "extruder": ["temperature", "target"],
-                    "heater_generic heater_bed_outer": ["temperature", "target"],
-                    "display_status": ["progress"],
-                    "print_stats": [
-                        "state",
-                        "print_duration",
-                        "filename",
-                        "total_duration",
-                        "info",
-                    ],
-                    "output_pin Part_Light": ["value"],
-                    "output_pin Frame_Light": ["value"],
-                    "configfile": ["config"],
-                }
-            },
+        return await self.client.call_method(
+            "printer.objects.subscribe", objects=self._printerObjects
         )
 
     async def queryKlippyStatus(self):
         status = await self.client.get_klipper_status()
         if status == "ready":
-            await self.stateCallback(PrinterStatus.READY)
+            self.status = json.load(await self._queryPrinterState())
+            await self.stateCallback(PrinterState.READY)
         elif status == "shutdown" or status == "disconnected":
-            await self.stateCallback(PrinterStatus.KLIPPER_ERR)
+            await self.stateCallback(PrinterState.KLIPPER_ERR)
+
+    async def _queryPrinterState(self):
+        return await self.client.call_method(
+            "printer.objects.query", objects=self._printerObjects
+        )
+
+    async def _updateState(self, state: PrinterState) -> Awaitable:
+        self.state = state
+        return self.stateCallback()
 
     async def state_changed(self, state: str | Literal[120]):
-        printerStatus = PrinterStatus.NOT_READY
+        printerStatus = PrinterState.NOT_READY
         if state == WEBSOCKET_STATE_CONNECTING:
             pass
         elif state == WEBSOCKET_STATE_CONNECTED:
-            await self.subscribe()
             await self.queryKlippyStatus()
+            logging.info("status %s" % str(await self.subscribe()))
         elif state == WEBSOCKET_STATE_STOPPING:
             pass
         elif state == WEBSOCKET_STATE_STOPPED:
-            printerStatus = PrinterStatus.STOPPED
+            printerStatus = PrinterState.STOPPED
         elif state == WEBSOCKET_CONNECTION_TIMEOUT:
-            printerStatus = PrinterStatus.MOONRAKER_ERR
+            printerStatus = PrinterState.MOONRAKER_ERR
 
-        await self.stateCallback(printerStatus)
+        await self._updateState(printerStatus)
 
     async def on_notification(self, method: str, data: Any):
         if method == Notifications.KLIPPY_READY:
-            await self.stateCallback(PrinterStatus.READY)
+            self.status = json.load(await self._queryPrinterState())
+            await self._updateState(PrinterState.READY)
         elif method == Notifications.KLIPPY_SHUTDOWN:
-            await self.stateCallback(PrinterStatus.KLIPPER_ERR)
+            await self._updateState(PrinterState.KLIPPER_ERR)
         elif method == Notifications.KLIPPY_DISCONNECTED:
-            await self.stateCallback(PrinterStatus.KLIPPER_ERR)
+            await self._updateState(PrinterState.KLIPPER_ERR)
         elif method == Notifications.STATUS_UPDATE:
-            await self.printerCallback(json.load(data))
+            self.status = json.load(data)["status"]
+            logging.info("Status update")
+            await self.printerCallback(self.status)
         elif method == Notifications.FILES_CHANGED:
             await self.filesCallback(json.load(data))
 

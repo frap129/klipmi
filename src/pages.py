@@ -23,6 +23,7 @@ from nextion import EventType
 from state import State
 from utils import SimpleDict
 
+
 def registerPages() -> SimpleDict:
     pages = SimpleDict()
 
@@ -31,6 +32,7 @@ def registerPages() -> SimpleDict:
     pages[MainPage.name] = MainPage
 
     return pages
+
 
 class BasePage:
     name = ""
@@ -61,7 +63,8 @@ class BootPage(BasePage):
     id = 0
 
     async def init(self):
-        await self.state.display.set('version.val', 18)
+        await self.state.display.set("version.val", 18, self.state.options.timeout)
+
 
 class MainPage(BasePage):
     name = "main"

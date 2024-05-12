@@ -58,6 +58,8 @@ def getConfigPath() -> str:
 
 
 class Config:
+    timeout: int = 5
+
     def __init__(self, configPath):
         self.reloadConfig(configPath)
 

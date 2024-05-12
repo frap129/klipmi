@@ -26,7 +26,7 @@ from typing import List
 
 from state import State
 from config import *
-from printer import Printer, PrinterStatus
+from printer import Printer, PrinterState
 from pages import registerPages, BasePage
 
 
@@ -34,7 +34,7 @@ class OpenQ1Display:
     def __init__(self):
         logging.basicConfig(
             format="%(asctime)s - %(levelname)s - %(message)s",
-            level=logging.DEBUG,
+            level=logging.INFO,
             handlers=[logging.StreamHandler()],
         )
         self.pages = registerPages()
@@ -45,6 +45,7 @@ class OpenQ1Display:
             self.state.options[TABLE_DISPLAY][KEY_BAUD],
             self.onDisplayEvent,
         )
+        self.state.display.encoding = "utf-8"
         self.state.printer = Printer(
             self.state.options,
             self.onConnectionEvent,
@@ -59,29 +60,29 @@ class OpenQ1Display:
     async def onDisplayEvent(self, type: EventType, data):
         if type == EventType.RECONNECTED:
             # Force update status on reconnect
-            asyncio.create_task(self.onConnectionEvent(self.state.status))
+            await self.onConnectionEvent(self.state.status)
         else:
-            logging.debug("Passing event to page %s", self.currentPage().name)
+            logging.info("Passing event to page %s", self.currentPage().name)
             asyncio.create_task(self.currentPage().onDisplayEvent(type, data))
 
-    async def onConnectionEvent(self, status: PrinterStatus):
+    async def onConnectionEvent(self, status: PrinterState):
         logging.info("Conenction status: %s", status)
         self.state.status = status
-        if status == PrinterStatus.NOT_READY:
-            asyncio.create_task(self.changePage("boot"))
+        if status == PrinterState.NOT_READY:
+            await self.changePage("boot")
+            asyncio.create_task(self.state.printer.queryKlippyStatus())
             pass
-        elif status == PrinterStatus.READY:
-            asyncio.create_task(self.changePage("main"))
+        elif status == PrinterState.READY:
+            await self.changePage("main")
             pass
-        elif status == PrinterStatus.STOPPED:
+        elif status == PrinterState.STOPPED:
             pass
-        elif status == PrinterStatus.MOONRAKER_ERR:
+        elif status == PrinterState.MOONRAKER_ERR:
             pass
-        elif status == PrinterStatus.KLIPPER_ERR:
+        elif status == PrinterState.KLIPPER_ERR:
             pass
 
     async def onPrinterStatusUpdate(self, data: dict):
-        self.state.printerData = data
         asyncio.create_task(self.currentPage().onPrinterStatusUpdate(data))
 
     async def onFileListUpdate(self, data: dict):
@@ -95,7 +96,9 @@ class OpenQ1Display:
             self.backstack.append(self.pages[page](self.state, self.changePage))
 
         await self.state.display.wakeup()
-        await self.state.display.command("page %d" % self.currentPage().id, 5)
+        await self.state.display.command(
+            "page %d" % self.currentPage().id, self.state.options.timeout
+        )
         await self.currentPage().init()
 
     async def init(self):
