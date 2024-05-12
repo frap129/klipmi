@@ -16,16 +16,12 @@ You should have received a copy of the GNU General Public License along with
 klipmi. If not, see <https://www.gnu.org/licenses/>. 
 """
 
-from config import Config
-from nextion import TJC
-from printer import Printer, PrinterState
+from klipmi.model.ui import BasePage
 
 
-class State:
-    def __init__(self):
-        self.options: Config
-        self.display: TJC
-        self.printer: Printer
-        self.printerData: dict = {}
-        self.fileList: dict = {}
-        self.status: PrinterState = PrinterState.NOT_READY
+class BootPage(BasePage):
+    name = "boot"
+    id = 0
+
+    async def init(self):
+        await self.state.display.set("version.val", 18, self.state.options.timeout)

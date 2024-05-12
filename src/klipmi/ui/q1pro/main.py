@@ -16,56 +16,10 @@ You should have received a copy of the GNU General Public License along with
 klipmi. If not, see <https://www.gnu.org/licenses/>. 
 """
 
-import logging
-
-from collections.abc import Callable
 from nextion import EventType
 
-from libcolpic import parse_thumbnail
-from state import State
-from utils import SimpleDict
-
-
-def registerPages() -> SimpleDict:
-    pages = SimpleDict()
-
-    # pages[BasePage.name] = BasePage
-    pages[BootPage.name] = BootPage
-    pages[MainPage.name] = MainPage
-
-    return pages
-
-
-class BasePage:
-    name = ""
-    id = -1
-
-    def __init__(self, state: State, changePageCallback: Callable):
-        self.state = state
-        self.changePageCallback = changePageCallback
-
-    async def init(self):
-        """Implimented on a page-by-page basis"""
-
-    async def onDisplayEvent(self, type: EventType, data):
-        logging.info("Event %s data: %s", type, str(data))
-
-    async def onPrinterStatusUpdate(self, data: dict):
-        """Implimented on a page-by-page basis"""
-
-    async def onFileListUpdate(self, data: dict):
-        """NO-OP for non-files pages"""
-
-    def changePage(self, page: str):
-        self.changePageCallback(page)
-
-
-class BootPage(BasePage):
-    name = "boot"
-    id = 0
-
-    async def init(self):
-        await self.state.display.set("version.val", 18, self.state.options.timeout)
+from klipmi.model.ui import BasePage
+from klipmi.utils import parseThumbnail
 
 
 class MainPage(BasePage):
@@ -123,7 +77,7 @@ class MainPage(BasePage):
             if self.metadata == {}:
                 self.metadata = await self.state.printer.getMetadata(self.filename)
 
-                thumbnail = parse_thumbnail(
+                thumbnail = parseThumbnail(
                     await self.state.printer.getThumbnail(
                         160, self.filename, self.metadata
                     ),

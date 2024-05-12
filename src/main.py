@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Copyright 2024 Joe Maples <joe@maples.dev>
 
@@ -24,13 +23,20 @@ from nextion import TJC, EventType
 from setproctitle import setproctitle
 from typing import List
 
-from state import State
-from config import Config, getConfigPath, TABLE_DISPLAY, KEY_DEVICE, KEY_BAUD
-from printer import Printer, PrinterState
-from pages import registerPages, BasePage
+from klipmi.model.config import (
+    Config,
+    getConfigPath,
+    TABLE_DISPLAY,
+    KEY_DEVICE,
+    KEY_BAUD,
+)
+from klipmi.model.printer import Printer, PrinterState
+from klipmi.model.state import KlipmiState
+from klipmi.model.ui import BasePage
+from klipmi.ui.q1pro import registerPages
 
 
-class klipmi:
+class Klipmi:
     def __init__(self):
         logging.basicConfig(
             format="%(asctime)s - %(levelname)s - %(message)s",
@@ -38,7 +44,7 @@ class klipmi:
             handlers=[logging.StreamHandler()],
         )
         self.pages = registerPages()
-        self.state: State = State()
+        self.state: KlipmiState = KlipmiState()
         self.state.options = Config(getConfigPath())
         self.state.display = TJC(
             self.state.options[TABLE_DISPLAY][KEY_DEVICE],
@@ -106,10 +112,16 @@ class klipmi:
         await self.changePage("boot")
         await self.state.printer.connect()
 
+    def start(self):
+        self.state.loop = asyncio.get_event_loop()
+        asyncio.ensure_future(self.init(), loop=self.state.loop)
+        self.state.loop.run_forever()
+
+
+def main():
+    setproctitle("klipmi")
+    Klipmi().start()
+
 
 if __name__ == "__main__":
-    setproctitle("klipmi")
-    loop = asyncio.get_event_loop()
-    app = klipmi()
-    asyncio.ensure_future(app.init())
-    loop.run_forever()
+    main()

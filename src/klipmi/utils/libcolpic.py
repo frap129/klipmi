@@ -6,7 +6,7 @@ from array import array
 from PIL import ImageColor
 
 
-def parse_thumbnail(img, width, height, default_background) -> str:
+def parseThumbnail(img, width, height, default_background) -> str:
     img.thumbnail((width, height))
     pixels = img.load()
     result = ""

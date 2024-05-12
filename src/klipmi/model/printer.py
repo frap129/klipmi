@@ -18,7 +18,6 @@ klipmi. If not, see <https://www.gnu.org/licenses/>.
 
 import requests
 import io
-import logging
 
 from enum import StrEnum
 from PIL import Image
@@ -34,8 +33,8 @@ from nextion.client import asyncio
 from typing import Callable, Literal
 from urllib.request import pathname2url
 
-from config import Config, TABLE_MOONRAKER, KEY_HOST, KEY_PORT, KEY_API
-from utils import update
+from klipmi.model.config import Config, TABLE_MOONRAKER, KEY_HOST, KEY_PORT, KEY_API
+from klipmi.utils import updateNestedDict
 
 
 class PrinterState(StrEnum):
@@ -197,7 +196,7 @@ class Printer(MoonrakerListener):
         elif method == Notifications.KLIPPY_DISCONNECTED:
             await self._updateState(PrinterState.KLIPPER_ERR)
         elif method == Notifications.STATUS_UPDATE:
-            update(self.status, data[0])
+            updateNestedDict(self.status, data[0])
             await self.printerCallback(self.status)
         elif method == Notifications.FILES_CHANGED:
             await self.filesCallback(data)
