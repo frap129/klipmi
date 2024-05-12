@@ -69,3 +69,37 @@ class BootPage(BasePage):
 class MainPage(BasePage):
     name = "main"
     id = 15
+
+    # Element image id's
+    _regular = 32
+    _highlight = 33
+
+    async def setHighlight(self, element: str, highlight: bool):
+        await self.state.display.set(
+            "%s.picc" % element, self._highlight if highlight else self._regular
+        )
+
+    async def onPrinterStatusUpdate(self, data: dict):
+        await self.state.display.set("n0.val", int(data["extruder"]["temperature"]))
+        await self.setHighlight(
+            "b3", data["extruder"]["target"] > data["extruder"]["temperature"]
+        )
+
+        await self.state.display.set("n1.val", int(data["heater_bed"]["temperature"]))
+        await self.setHighlight(
+            "b4", data["heater_bed"]["target"] > data["heater_bed"]["temperature"]
+        )
+
+        await self.state.display.set(
+            "n2.val", int(data["heater_generic chamber"]["temperature"])
+        )
+        await self.setHighlight(
+            "b5",
+            data["heater_generic chamber"]["target"]
+            > data["heater_generic chamber"]["temperature"],
+        )
+
+        await self.setHighlight(
+            "b0.picc", int(data["output_pin caselight"]["value"]) == 1
+        )
+        await self.setHighlight("b1.picc", int(data["output_pin sound"]["value"]) == 1)

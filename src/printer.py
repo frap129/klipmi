@@ -54,9 +54,11 @@ class Printer(MoonrakerListener):
         "motion_report": ["live_position", "live_velocity"],
         "fan": ["speed"],
         "heater_bed": ["temperature", "target"],
-        "extruder": ["temperature", "target"],
-        "heater_generic heater_bed_outer": ["temperature", "target"],
+        "extruder": ["target", "temperature"],
+        "heater_generic chamber": ["temperature", "target"],
         "display_status": ["progress"],
+        "output_pin caselight": ["value"],
+        "output_pin sound": ["value"],
         "print_stats": [
             "state",
             "print_duration",
