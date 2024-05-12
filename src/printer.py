@@ -16,7 +16,12 @@ You should have received a copy of the GNU General Public License along with
 OpenQ1Display. If not, see <https://www.gnu.org/licenses/>. 
 """
 
+import requests
+import io
+import logging
+
 from enum import StrEnum
+from PIL import Image
 from moonraker_api import MoonrakerClient, MoonrakerListener
 from moonraker_api.websockets.websocketclient import (
     WEBSOCKET_STATE_CONNECTING,
@@ -27,6 +32,7 @@ from moonraker_api.websockets.websocketclient import (
 )
 from nextion.client import asyncio
 from typing import Callable, Literal
+from urllib.request import pathname2url
 
 from config import Config, TABLE_MOONRAKER, KEY_HOST, KEY_PORT, KEY_API
 from utils import update
@@ -109,6 +115,38 @@ class Printer(MoonrakerListener):
             "SET_PIN PIN=%s VALUE=%d"
             % (pin, 1 - self.status["output_pin %s" % pin]["value"])
         )
+
+    async def getMetadata(self, filename):
+        metadata = await self.client.call_method(
+            "server.files.metadata", filename=filename
+        )
+        return metadata
+
+    async def getThumbnail(self, size: int, filename: str, metadata: dict = {}):
+        if metadata == {}:
+            metadata = await self.getMetadata(filename)
+        best_thumbnail = {}
+        for thumbnail in metadata["thumbnails"]:
+            if thumbnail["width"] == size:
+                best_thumbnail = thumbnail
+                break
+            if best_thumbnail == {} or thumbnail["width"] > best_thumbnail["width"]:
+                best_thumbnail = thumbnail
+
+        path = "/".join(filename.split("/")[:-1])
+        if path != "":
+            path = path + "/"
+        path += best_thumbnail["relative_path"]
+
+        host = self.options[TABLE_MOONRAKER][KEY_HOST]
+        if "http" not in host:
+            host = "http://%s" % host
+
+        img = requests.get(
+            "%s/server/files/gcodes/%s" % (host, pathname2url(path)),
+            timeout=5,
+        )
+        return Image.open(io.BytesIO(img.content))
 
     async def subscribe(self):
         await self.client.call_method(

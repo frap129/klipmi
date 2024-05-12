@@ -20,6 +20,8 @@ import logging
 
 from collections.abc import Callable
 from nextion import EventType
+
+from libcolpic import parse_thumbnail
 from state import State
 from utils import SimpleDict
 
@@ -74,6 +76,10 @@ class MainPage(BasePage):
     _regular = 32
     _highlight = 33
 
+    # Thumbnail
+    filename = ""
+    metadata = {}
+
     def isHeating(self, heaterData: dict) -> bool:
         return heaterData["target"] > heaterData["temperature"]
 
@@ -107,3 +113,37 @@ class MainPage(BasePage):
 
         await self.setHighlight("b0", data["output_pin caselight"]["value"] > 0)
         await self.setHighlight("b1", data["output_pin sound"]["value"] > 0)
+
+        self.filename = data["print_stats"]["filename"]
+        await self.state.display.set("t0.txt", self.filename)
+        if self.filename == "":
+            await self.state.display.set("b6.picc", 31)
+            await self.state.display.command("vis cp0,0")
+        else:
+            if self.metadata == {}:
+                self.metadata = await self.state.printer.getMetadata(self.filename)
+
+                thumbnail = parse_thumbnail(
+                    await self.state.printer.getThumbnail(
+                        160, self.filename, self.metadata
+                    ),
+                    160,
+                    160,
+                    "4d4d4d",
+                )
+                await self.state.display.command("p[" + str(self.id) + "].cp0.close()")
+
+                parts = []
+                start = 0
+                end = 1024
+                while start + 1024 < len(thumbnail):
+                    parts.append(thumbnail[start:end])
+                    start = start + 1024
+                    end = end + 1024
+
+                parts.append(thumbnail[start : len(thumbnail)])
+                for part in parts:
+                    await self.state.display.command(
+                        "p[" + str(self.id) + '].cp0.write("' + str(part) + '")'
+                    )
+            await self.state.display.command("vis cp0,1")
