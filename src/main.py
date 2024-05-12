@@ -33,7 +33,7 @@ from klipmi.model.config import (
 from klipmi.model.printer import Printer, PrinterState
 from klipmi.model.state import KlipmiState
 from klipmi.model.ui import BasePage
-from klipmi.ui.q1pro import registerPages
+from klipmi.ui.openq1 import registerPages
 
 
 class Klipmi:
