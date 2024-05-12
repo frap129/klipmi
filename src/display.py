@@ -25,7 +25,7 @@ from setproctitle import setproctitle
 from typing import List
 
 from state import State
-from config import *
+from config import Config, getConfigPath, TABLE_DISPLAY, KEY_DEVICE, KEY_BAUD
 from printer import Printer, PrinterState
 from pages import registerPages, BasePage
 
@@ -70,7 +70,6 @@ class OpenQ1Display:
         self.state.status = status
         if status == PrinterState.NOT_READY:
             await self.changePage("boot")
-            asyncio.create_task(self.state.printer.queryKlippyStatus())
             pass
         elif status == PrinterState.READY:
             await self.changePage("main")

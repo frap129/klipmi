@@ -16,9 +16,6 @@ You should have received a copy of the GNU General Public License along with
 OpenQ1Display. If not, see <https://www.gnu.org/licenses/>. 
 """
 
-import json
-import logging
-
 from enum import StrEnum
 from moonraker_api import MoonrakerClient, MoonrakerListener
 from moonraker_api.websockets.websocketclient import (
@@ -28,8 +25,10 @@ from moonraker_api.websockets.websocketclient import (
     WEBSOCKET_STATE_STOPPED,
     WEBSOCKET_CONNECTION_TIMEOUT,
 )
-from typing import Any, Awaitable, Callable, Literal
-from config import *
+from nextion.client import asyncio
+from typing import Callable, Literal
+
+from config import Config, TABLE_MOONRAKER, KEY_HOST, KEY_PORT, KEY_API
 
 
 class PrinterState(StrEnum):
@@ -98,19 +97,19 @@ class Printer(MoonrakerListener):
         await self.client.disconnect()
 
     async def subscribe(self):
-        return await self.client.call_method(
+        await self.client.call_method(
             "printer.objects.subscribe", objects=self._printerObjects
         )
 
-    async def queryKlippyStatus(self):
+    async def _updateKlippyStatus(self):
         status = await self.client.get_klipper_status()
         if status == "ready":
-            self.status = await self._queryPrinterState()
+            self.status = await self._getPrinterState()
             await self.stateCallback(PrinterState.READY)
         elif status == "shutdown" or status == "disconnected":
             await self.stateCallback(PrinterState.KLIPPER_ERR)
 
-    async def _queryPrinterState(self):
+    async def _getPrinterState(self) -> dict:
         return (
             await self.client.call_method(
                 "printer.objects.query", objects=self._printerObjects
@@ -126,8 +125,8 @@ class Printer(MoonrakerListener):
         if state == WEBSOCKET_STATE_CONNECTING:
             pass
         elif state == WEBSOCKET_STATE_CONNECTED:
-            await self.queryKlippyStatus()
             await self.subscribe()
+            asyncio.create_task(self._updateKlippyStatus())
         elif state == WEBSOCKET_STATE_STOPPING:
             pass
         elif state == WEBSOCKET_STATE_STOPPED:
@@ -137,9 +136,9 @@ class Printer(MoonrakerListener):
 
         await self._updateState(printerStatus)
 
-    async def on_notification(self, method: str, data: dict):
+    async def on_notification(self, method: str, data: list):
         if method == Notifications.KLIPPY_READY:
-            self.status = await self._queryPrinterState()
+            self.status = await self._getPrinterState()
             await self._updateState(PrinterState.READY)
         elif method == Notifications.KLIPPY_SHUTDOWN:
             await self._updateState(PrinterState.KLIPPER_ERR)
