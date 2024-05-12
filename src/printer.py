@@ -29,6 +29,7 @@ from nextion.client import asyncio
 from typing import Callable, Literal
 
 from config import Config, TABLE_MOONRAKER, KEY_HOST, KEY_PORT, KEY_API
+from utils import update
 
 
 class PrinterState(StrEnum):
@@ -147,7 +148,7 @@ class Printer(MoonrakerListener):
         elif method == Notifications.KLIPPY_DISCONNECTED:
             await self._updateState(PrinterState.KLIPPER_ERR)
         elif method == Notifications.STATUS_UPDATE:
-            self.status.update(data[0])
+            update(self.status, data[0])
             await self.printerCallback(self.status)
         elif method == Notifications.FILES_CHANGED:
             await self.filesCallback(data)

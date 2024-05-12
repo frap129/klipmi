@@ -16,7 +16,18 @@ You should have received a copy of the GNU General Public License along with
 OpenQ1Display. If not, see <https://www.gnu.org/licenses/>. 
 """
 
+import collections.abc
+
 
 class SimpleDict(dict):
     def __missing__(self, key):
         return None
+
+
+def update(d, u):
+    for k, v in u.items():
+        if isinstance(v, collections.abc.Mapping):
+            d[k] = update(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
