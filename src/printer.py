@@ -99,6 +99,17 @@ class Printer(MoonrakerListener):
         await self._updateState(PrinterState.STOPPED)
         await self.client.disconnect()
 
+    def runGcode(self, gcode: str):
+        asyncio.create_task(
+            self.client.call_method("printer.gcode.script", script=gcode)
+        )
+
+    def togglePin(self, pin: str):
+        self.runGcode(
+            "SET_PIN PIN=%s VALUE=%d"
+            % (pin, 1 - self.status["output_pin %s" % pin]["value"])
+        )
+
     async def subscribe(self):
         await self.client.call_method(
             "printer.objects.subscribe", objects=self._printerObjects

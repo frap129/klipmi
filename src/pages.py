@@ -82,6 +82,17 @@ class MainPage(BasePage):
             "%s.picc" % element, self._highlight if highlight else self._regular
         )
 
+    async def onDisplayEvent(self, type: EventType, data):
+        await super().onDisplayEvent(type, data)
+        if type == EventType.TOUCH:
+            if data.component_id == 0:
+                self.state.printer.togglePin("caselight")
+            elif data.component_id == 1:
+                self.state.printer.togglePin("sound")
+                self.state.printer.togglePin("beep")
+            elif data.component_id == 2:
+                self.state.printer.runGcode("M112")
+
     async def onPrinterStatusUpdate(self, data: dict):
         await self.state.display.set("n0.val", int(data["extruder"]["temperature"]))
         await self.setHighlight("b3", self.isHeating(data["extruder"]))
