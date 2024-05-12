@@ -74,6 +74,9 @@ class MainPage(BasePage):
     _regular = 32
     _highlight = 33
 
+    def isHeating(self, heaterData: dict) -> bool:
+        return heaterData["target"] > heaterData["temperature"]
+
     async def setHighlight(self, element: str, highlight: bool):
         await self.state.display.set(
             "%s.picc" % element, self._highlight if highlight else self._regular
@@ -81,25 +84,15 @@ class MainPage(BasePage):
 
     async def onPrinterStatusUpdate(self, data: dict):
         await self.state.display.set("n0.val", int(data["extruder"]["temperature"]))
-        await self.setHighlight(
-            "b3", data["extruder"]["target"] > data["extruder"]["temperature"]
-        )
+        await self.setHighlight("b3", self.isHeating(data["extruder"]))
 
         await self.state.display.set("n1.val", int(data["heater_bed"]["temperature"]))
-        await self.setHighlight(
-            "b4", data["heater_bed"]["target"] > data["heater_bed"]["temperature"]
-        )
+        await self.setHighlight("b4", self.isHeating(data["heater_bed"]))
 
         await self.state.display.set(
             "n2.val", int(data["heater_generic chamber"]["temperature"])
         )
-        await self.setHighlight(
-            "b5",
-            data["heater_generic chamber"]["target"]
-            > data["heater_generic chamber"]["temperature"],
-        )
+        await self.setHighlight("b5", self.isHeating(data["heater_generic chamber"]))
 
-        await self.setHighlight(
-            "b0.picc", int(data["output_pin caselight"]["value"]) == 1
-        )
-        await self.setHighlight("b1.picc", int(data["output_pin sound"]["value"]) == 1)
+        await self.setHighlight("b0", data["output_pin caselight"]["value"] > 0)
+        await self.setHighlight("b1", data["output_pin sound"]["value"] > 0)
