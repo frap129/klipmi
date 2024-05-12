@@ -34,7 +34,7 @@ class OpenQ1Display:
     def __init__(self):
         logging.basicConfig(
             format="%(asctime)s - %(levelname)s - %(message)s",
-            level=logging.INFO,
+            level=logging.DEBUG,
             handlers=[logging.StreamHandler()],
         )
         self.pages = registerPages()

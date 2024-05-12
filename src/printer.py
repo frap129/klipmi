@@ -105,19 +105,21 @@ class Printer(MoonrakerListener):
     async def queryKlippyStatus(self):
         status = await self.client.get_klipper_status()
         if status == "ready":
-            self.status = json.load(await self._queryPrinterState())
+            self.status = await self._queryPrinterState()
             await self.stateCallback(PrinterState.READY)
         elif status == "shutdown" or status == "disconnected":
             await self.stateCallback(PrinterState.KLIPPER_ERR)
 
     async def _queryPrinterState(self):
-        return await self.client.call_method(
-            "printer.objects.query", objects=self._printerObjects
-        )
+        return (
+            await self.client.call_method(
+                "printer.objects.query", objects=self._printerObjects
+            )
+        )["status"]
 
-    async def _updateState(self, state: PrinterState) -> Awaitable:
+    async def _updateState(self, state: PrinterState):
         self.state = state
-        return self.stateCallback()
+        await self.stateCallback(state)
 
     async def state_changed(self, state: str | Literal[120]):
         printerStatus = PrinterState.NOT_READY
@@ -125,7 +127,7 @@ class Printer(MoonrakerListener):
             pass
         elif state == WEBSOCKET_STATE_CONNECTED:
             await self.queryKlippyStatus()
-            logging.info("status %s" % str(await self.subscribe()))
+            await self.subscribe()
         elif state == WEBSOCKET_STATE_STOPPING:
             pass
         elif state == WEBSOCKET_STATE_STOPPED:
@@ -135,20 +137,19 @@ class Printer(MoonrakerListener):
 
         await self._updateState(printerStatus)
 
-    async def on_notification(self, method: str, data: Any):
+    async def on_notification(self, method: str, data: dict):
         if method == Notifications.KLIPPY_READY:
-            self.status = json.load(await self._queryPrinterState())
+            self.status = await self._queryPrinterState()
             await self._updateState(PrinterState.READY)
         elif method == Notifications.KLIPPY_SHUTDOWN:
             await self._updateState(PrinterState.KLIPPER_ERR)
         elif method == Notifications.KLIPPY_DISCONNECTED:
             await self._updateState(PrinterState.KLIPPER_ERR)
         elif method == Notifications.STATUS_UPDATE:
-            self.status = json.load(data)["status"]
-            logging.info("Status update")
+            self.status.update(data[0])
             await self.printerCallback(self.status)
         elif method == Notifications.FILES_CHANGED:
-            await self.filesCallback(json.load(data))
+            await self.filesCallback(data)
 
     async def on_exception(self, exception: type | BaseException) -> None:
         """TODO"""
