@@ -1,0 +1,9 @@
+[klipmi]
+device = "/dev/ttyS1"
+baudrate = 115200
+
+[moonraker]
+host = "0.0.0.0"
+port = 7125
+api-key = "xxxxxxxxxxxxxxxxxxx"
+
