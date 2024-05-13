@@ -167,6 +167,8 @@ class Printer(MoonrakerListener):
     async def on_notification(self, method: str, data: list):
         if method == Notifications.KLIPPY_READY:
             self.status = await self.__getPrinterState()
+            await self.__subscribe()
+            asyncio.create_task(self.__updateKlippyStatus())
             await self.__updateState(PrinterState.READY)
         elif method == Notifications.KLIPPY_SHUTDOWN:
             await self.__updateState(PrinterState.KLIPPER_ERR)
