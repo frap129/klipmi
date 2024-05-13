@@ -42,19 +42,15 @@ class BasePage(ABC):
         self.state = state
         self.changePageCallback = changePageCallback
 
-    @abstractmethod
     async def init(self):
         pass
 
-    @abstractmethod
     async def onDisplayEvent(self, type: EventType, data):
         pass
 
-    @abstractmethod
     async def onPrinterStatusUpdate(self, data: dict):
         pass
 
-    @abstractmethod
     async def onFileListUpdate(self, data: dict):
         pass
 
@@ -72,7 +68,6 @@ class BaseUi(ABC):
 
     def __init__(self, state: KlipmiState):
         self.state = state
-        self.registerPages()
 
     @property
     def currentPage(self) -> BasePage | None:
@@ -80,10 +75,6 @@ class BaseUi(ABC):
             return self._backstack[-1]
         except:
             return None
-
-    @abstractmethod
-    def registerPages(self):
-        pass
 
     @abstractmethod
     def onNotReady(self):

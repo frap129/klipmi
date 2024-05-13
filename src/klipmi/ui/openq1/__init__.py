@@ -16,9 +16,9 @@ You should have received a copy of the GNU General Public License along with
 klipmi. If not, see <https://www.gnu.org/licenses/>. 
 """
 
-from .openq1 import OpenQ1UI
 from .boot import BootPage
 from .main import MainPage
+from .openq1 import OpenQ1UI
 
 __all__ = [
     "OpenQ1UI",
