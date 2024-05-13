@@ -29,7 +29,7 @@ class MainPage(BasePage):
 
     @classproperty
     def id(cls) -> int:
-        return 15
+        return 3
 
     # Element image id's
     _regular = 32
