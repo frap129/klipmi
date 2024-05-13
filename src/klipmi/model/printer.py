@@ -55,7 +55,7 @@ class Notifications(StrEnum):
 
 
 class Printer(MoonrakerListener):
-    _printerObjects: dict = {
+    __printerObjects: dict = {
         "gcode_move": ["extrude_factor", "speed_factor", "homing_origin"],
         "motion_report": ["live_position", "live_velocity"],
         "fan": ["speed"],
@@ -98,7 +98,7 @@ class Printer(MoonrakerListener):
 
     async def disconnect(self) -> None:
         self.running = False
-        await self._updateState(PrinterState.STOPPED)
+        await self.__updateState(PrinterState.STOPPED)
         await self.client.disconnect()
 
     def runGcode(self, gcode: str):
@@ -144,27 +144,27 @@ class Printer(MoonrakerListener):
         )
         return Image.open(io.BytesIO(img.content))
 
-    async def subscribe(self):
+    async def __subscribe(self):
         await self.client.call_method(
-            "printer.objects.subscribe", objects=self._printerObjects
+            "printer.objects.subscribe", objects=self.__printerObjects
         )
 
-    async def _updateKlippyStatus(self):
+    async def __updateKlippyStatus(self):
         status = await self.client.get_klipper_status()
         if status == "ready":
-            self.status = await self._getPrinterState()
+            self.status = await self.__getPrinterState()
             await self.stateCallback(PrinterState.READY)
         elif status == "shutdown" or status == "disconnected":
             await self.stateCallback(PrinterState.KLIPPER_ERR)
 
-    async def _getPrinterState(self) -> dict:
+    async def __getPrinterState(self) -> dict:
         return (
             await self.client.call_method(
-                "printer.objects.query", objects=self._printerObjects
+                "printer.objects.query", objects=self.__printerObjects
             )
         )["status"]
 
-    async def _updateState(self, state: PrinterState):
+    async def __updateState(self, state: PrinterState):
         self.state = state
         await self.stateCallback(state)
 
@@ -173,8 +173,8 @@ class Printer(MoonrakerListener):
         if state == WEBSOCKET_STATE_CONNECTING:
             pass
         elif state == WEBSOCKET_STATE_CONNECTED:
-            await self.subscribe()
-            asyncio.create_task(self._updateKlippyStatus())
+            await self.__subscribe()
+            asyncio.create_task(self.__updateKlippyStatus())
         elif state == WEBSOCKET_STATE_STOPPING:
             pass
         elif state == WEBSOCKET_STATE_STOPPED:
@@ -182,16 +182,16 @@ class Printer(MoonrakerListener):
         elif state == WEBSOCKET_CONNECTION_TIMEOUT:
             printerStatus = PrinterState.MOONRAKER_ERR
 
-        await self._updateState(printerStatus)
+        await self.__updateState(printerStatus)
 
     async def on_notification(self, method: str, data: list):
         if method == Notifications.KLIPPY_READY:
-            self.status = await self._getPrinterState()
-            await self._updateState(PrinterState.READY)
+            self.status = await self.__getPrinterState()
+            await self.__updateState(PrinterState.READY)
         elif method == Notifications.KLIPPY_SHUTDOWN:
-            await self._updateState(PrinterState.KLIPPER_ERR)
+            await self.__updateState(PrinterState.KLIPPER_ERR)
         elif method == Notifications.KLIPPY_DISCONNECTED:
-            await self._updateState(PrinterState.KLIPPER_ERR)
+            await self.__updateState(PrinterState.KLIPPER_ERR)
         elif method == Notifications.STATUS_UPDATE:
             updateNestedDict(self.status, data[0])
             await self.printerCallback(self.status)
