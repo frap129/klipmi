@@ -25,6 +25,7 @@ from nextion import EventType
 
 from klipmi.model.state import KlipmiState
 from klipmi.utils import classproperty
+from klipmi.utils.libcolpic import parseThumbnail
 
 
 class BasePage(ABC):
@@ -56,6 +57,31 @@ class BasePage(ABC):
 
     def changePage(self, page: str):
         self.changePageCallback(page)
+
+    async def uploadThumbnail(
+        self, element: str, size: int, bgColor: str, filename: str, metadata: dict = {}
+    ):
+        thumbnail = parseThumbnail(
+            await self.state.printer.getThumbnail(size, filename, metadata),
+            size,
+            size,
+            bgColor,
+        )
+        await self.state.display.command("p[%d].%s.close()" % (self.id, element))
+
+        parts = []
+        start = 0
+        end = 1024
+        while start + 1024 < len(thumbnail):
+            parts.append(thumbnail[start:end])
+            start = start + 1024
+            end = end + 1024
+
+        parts.append(thumbnail[start : len(thumbnail)])
+        for part in parts:
+            await self.state.display.command(
+                'p[%d].%s.write("%s")' % (self.id, element, str(part))
+            )
 
 
 class BaseUi(ABC):

@@ -19,7 +19,7 @@ klipmi. If not, see <https://www.gnu.org/licenses/>.
 from nextion import EventType
 
 from klipmi.model.ui import BasePage
-from klipmi.utils import parseThumbnail, classproperty
+from klipmi.utils import classproperty
 
 
 class MainPage(BasePage):
@@ -47,6 +47,9 @@ class MainPage(BasePage):
             "%s.picc" % element, self._highlight if highlight else self._regular
         )
 
+    async def init(self):
+        await self.state.display.set("b6.picc", 31)
+
     async def onDisplayEvent(self, type: EventType, data):
         if type == EventType.TOUCH:
             if data.component_id == 0:
@@ -72,36 +75,16 @@ class MainPage(BasePage):
         await self.setHighlight("b0", data["output_pin caselight"]["value"] > 0)
         await self.setHighlight("b1", data["output_pin sound"]["value"] > 0)
 
-        self.filename = data["print_stats"]["filename"]
-        await self.state.display.set("t0.txt", self.filename)
-        if self.filename == "":
-            await self.state.display.set("b6.picc", 31)
+        filename = data["print_stats"]["filename"]
+        await self.state.display.set("t0.txt", filename)
+        if filename == "":
             await self.state.display.command("vis cp0,0")
         else:
-            if self.metadata == {}:
-                self.metadata = await self.state.printer.getMetadata(self.filename)
-
-                thumbnail = parseThumbnail(
-                    await self.state.printer.getThumbnail(
-                        160, self.filename, self.metadata
-                    ),
-                    160,
-                    160,
-                    "4d4d4d",
+            if filename != self.filename:
+                self.filename = filename
+                if self.metadata == {}:
+                    self.metadata = await self.state.printer.getMetadata(self.filename)
+                await self.uploadThumbnail(
+                    "cp0", 160, "4d4d4d", self.filename, self.metadata
                 )
-                await self.state.display.command("p[" + str(self.id) + "].cp0.close()")
-
-                parts = []
-                start = 0
-                end = 1024
-                while start + 1024 < len(thumbnail):
-                    parts.append(thumbnail[start:end])
-                    start = start + 1024
-                    end = end + 1024
-
-                parts.append(thumbnail[start : len(thumbnail)])
-                for part in parts:
-                    await self.state.display.command(
-                        "p[" + str(self.id) + '].cp0.write("' + str(part) + '")'
-                    )
-            await self.state.display.command("vis cp0,1")
+                await self.state.display.command("vis cp0,1")
