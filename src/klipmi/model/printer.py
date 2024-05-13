@@ -33,7 +33,7 @@ from nextion.client import asyncio
 from typing import Callable, Literal
 from urllib.request import pathname2url
 
-from klipmi.model.config import Config, TABLE_MOONRAKER, KEY_HOST, KEY_PORT, KEY_API
+from klipmi.model.config import MoonrakerConfig
 from klipmi.utils import updateNestedDict
 
 
@@ -76,7 +76,7 @@ class Printer(MoonrakerListener):
 
     def __init__(
         self,
-        options: Config,
+        options: MoonrakerConfig,
         stateCallback: Callable,
         printerCallback: Callable,
         filesCallback: Callable,
@@ -84,14 +84,11 @@ class Printer(MoonrakerListener):
         self.stateCallback: Callable = stateCallback
         self.printerCallback: Callable = printerCallback
         self.filesCallback: Callable = filesCallback
-        self.options: Config = options
+        self.options: MoonrakerConfig = options
         self.running: bool = False
         self.status: dict = {}
         self.client: MoonrakerClient = MoonrakerClient(
-            self,
-            options[TABLE_MOONRAKER][KEY_HOST],
-            options[TABLE_MOONRAKER][KEY_PORT],
-            options[TABLE_MOONRAKER][KEY_API],
+            self, options.host, options.port, options.api_key
         )
 
     async def connect(self) -> bool | None:
@@ -137,7 +134,7 @@ class Printer(MoonrakerListener):
             path = path + "/"
         path += best_thumbnail["relative_path"]
 
-        host = self.options[TABLE_MOONRAKER][KEY_HOST]
+        host = self.options.host
         if "http" not in host:
             host = "http://%s" % host
 

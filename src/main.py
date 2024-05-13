@@ -23,13 +23,7 @@ from nextion import TJC, EventType
 from setproctitle import setproctitle
 from typing import List
 
-from klipmi.model.config import (
-    Config,
-    getConfigPath,
-    TABLE_DISPLAY,
-    KEY_DEVICE,
-    KEY_BAUD,
-)
+from klipmi.model.config import Config
 from klipmi.model.printer import Printer, PrinterState
 from klipmi.model.state import KlipmiState
 from klipmi.model.ui import BasePage
@@ -45,15 +39,15 @@ class Klipmi:
         )
         self.pages = registerPages()
         self.state: KlipmiState = KlipmiState()
-        self.state.options = Config(getConfigPath())
+        self.state.options = Config()
         self.state.display = TJC(
-            self.state.options[TABLE_DISPLAY][KEY_DEVICE],
-            self.state.options[TABLE_DISPLAY][KEY_BAUD],
+            self.state.options.klipmi.device,
+            self.state.options.klipmi.baud,
             self.onDisplayEvent,
         )
         self.state.display.encoding = "utf-8"
         self.state.printer = Printer(
-            self.state.options,
+            self.state.options.moonraker,
             self.onConnectionEvent,
             self.onPrinterStatusUpdate,
             self.onFileListUpdate,
