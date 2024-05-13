@@ -16,12 +16,35 @@ You should have received a copy of the GNU General Public License along with
 klipmi. If not, see <https://www.gnu.org/licenses/>. 
 """
 
+from typing import Dict, List
 from klipmi.model.ui import BaseUi
+from klipmi.utils.utils import classproperty
 from . import BootPage
 from . import MainPage
 
 
 class OpenQ1UI(BaseUi):
+    @classproperty
+    def printerObjects(cls) -> Dict[str, List[str]]:
+        return {
+            "gcode_move": ["extrude_factor", "speed_factor", "homing_origin"],
+            "motion_report": ["live_position", "live_velocity"],
+            "fan": ["speed"],
+            "heater_bed": ["temperature", "target"],
+            "extruder": ["target", "temperature"],
+            "heater_generic chamber": ["temperature", "target"],
+            "display_status": ["progress"],
+            "output_pin caselight": ["value"],
+            "output_pin sound": ["value"],
+            "print_stats": [
+                "state",
+                "print_duration",
+                "filename",
+                "total_duration",
+                "info",
+            ],
+        }
+
     def onNotReady(self):
         self.changePage(BootPage)
 

@@ -28,7 +28,5 @@ class KlipmiState:
         self.options: Config
         self.display: TJC
         self.printer: Printer
-        self.printerData: dict = {}
-        self.fileList: dict = {}
         self.status: PrinterState = PrinterState.NOT_READY
         self.loop: AbstractEventLoop

@@ -30,7 +30,7 @@ from moonraker_api.websockets.websocketclient import (
     WEBSOCKET_CONNECTION_TIMEOUT,
 )
 from nextion.client import asyncio
-from typing import Callable, Literal
+from typing import Callable, Dict, List, Literal
 from urllib.request import pathname2url
 
 from klipmi.model.config import MoonrakerConfig
@@ -55,38 +55,22 @@ class Notifications(StrEnum):
 
 
 class Printer(MoonrakerListener):
-    __printerObjects: dict = {
-        "gcode_move": ["extrude_factor", "speed_factor", "homing_origin"],
-        "motion_report": ["live_position", "live_velocity"],
-        "fan": ["speed"],
-        "heater_bed": ["temperature", "target"],
-        "extruder": ["target", "temperature"],
-        "heater_generic chamber": ["temperature", "target"],
-        "display_status": ["progress"],
-        "output_pin caselight": ["value"],
-        "output_pin sound": ["value"],
-        "print_stats": [
-            "state",
-            "print_duration",
-            "filename",
-            "total_duration",
-            "info",
-        ],
-    }
-
     def __init__(
         self,
         options: MoonrakerConfig,
         stateCallback: Callable,
         printerCallback: Callable,
         filesCallback: Callable,
+        objects: Dict[str, List[str]],
     ):
         self.stateCallback: Callable = stateCallback
         self.printerCallback: Callable = printerCallback
         self.filesCallback: Callable = filesCallback
         self.options: MoonrakerConfig = options
+        self.objects = objects
         self.running: bool = False
         self.status: dict = {}
+        self.files: dict = {}
         self.client: MoonrakerClient = MoonrakerClient(
             self, options.host, options.port, options.api_key
         )
@@ -145,9 +129,7 @@ class Printer(MoonrakerListener):
         return Image.open(io.BytesIO(img.content))
 
     async def __subscribe(self):
-        await self.client.call_method(
-            "printer.objects.subscribe", objects=self.__printerObjects
-        )
+        await self.client.call_method("printer.objects.subscribe", objects=self.objects)
 
     async def __updateKlippyStatus(self):
         status = await self.client.get_klipper_status()
@@ -159,9 +141,7 @@ class Printer(MoonrakerListener):
 
     async def __getPrinterState(self) -> dict:
         return (
-            await self.client.call_method(
-                "printer.objects.query", objects=self.__printerObjects
-            )
+            await self.client.call_method("printer.objects.query", objects=self.objects)
         )["status"]
 
     async def __updateState(self, state: PrinterState):
@@ -196,7 +176,8 @@ class Printer(MoonrakerListener):
             updateNestedDict(self.status, data[0])
             await self.printerCallback(self.status)
         elif method == Notifications.FILES_CHANGED:
-            await self.filesCallback(data)
+            self.files = data[0]
+            await self.filesCallback(self.files)
 
     async def on_exception(self, exception: type | BaseException) -> None:
         """TODO"""

@@ -45,13 +45,14 @@ class Klipmi:
             self.onDisplayEvent,
         )
         self.state.display.encoding = "utf-8"
+        self.ui: BaseUi = ui.implementations[self.state.options.klipmi.ui](self.state)
         self.state.printer = Printer(
             self.state.options.moonraker,
             self.onConnectionEvent,
-            self.onPrinterStatusUpdate,
-            self.onFileListUpdate,
+            self.ui.onPrinterStatusUpdate,
+            self.ui.onFileListUpdate,
+            self.ui.printerObjects,
         )
-        self.ui: BaseUi = ui.implementations[self.state.options.klipmi.ui](self.state)
 
     async def onDisplayEvent(self, type: EventType, data):
         if type == EventType.RECONNECTED:
@@ -71,13 +72,6 @@ class Klipmi:
             self.ui.onMoonrakerError()
         elif status == PrinterState.KLIPPER_ERR:
             self.ui.onKlipperError()
-
-    async def onPrinterStatusUpdate(self, data: dict):
-        asyncio.create_task(self.ui.onPrinterStatusUpdate(data))
-
-    async def onFileListUpdate(self, data: dict):
-        self.state.fileList = data
-        asyncio.create_task(self.ui.onFileListUpdate(data))
 
     async def init(self):
         await self.state.display.connect()

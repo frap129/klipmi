@@ -19,7 +19,7 @@ klipmi. If not, see <https://www.gnu.org/licenses/>.
 import asyncio
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import List, Type
+from typing import Dict, List, Type
 
 from nextion import EventType
 
@@ -64,6 +64,11 @@ class BasePage(ABC):
 
 class BaseUi(ABC):
     _backstack: List[BasePage] = []
+
+    @classproperty
+    @abstractmethod
+    def printerObjects(cls) -> Dict[str, List[str]]:
+        pass
 
     def __init__(self, state: KlipmiState):
         self.state = state
