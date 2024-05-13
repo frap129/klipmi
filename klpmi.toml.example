@@ -1,6 +1,7 @@
 [klipmi]
 device = "/dev/ttyS1"
 baudrate = 115200
+ui = "openq1"
 
 [moonraker]
 host = "0.0.0.0"
