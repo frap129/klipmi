@@ -16,10 +16,11 @@ You should have received a copy of the GNU General Public License along with
 klipmi. If not, see <https://www.gnu.org/licenses/>. 
 """
 
-from .utils import updateNestedDict
+from .utils import updateNestedDict, classproperty
 from .libcolpic import parseThumbnail
 
 __all__ = [
+    "classproperty",
     "updateNestedDict",
     "parseThumbnail",
 ]

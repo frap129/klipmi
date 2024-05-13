@@ -21,13 +21,12 @@ import logging
 
 from nextion import TJC, EventType
 from setproctitle import setproctitle
-from typing import List
 
+from klipmi import ui
 from klipmi.model.config import Config
 from klipmi.model.printer import Printer, PrinterState
 from klipmi.model.state import KlipmiState
-from klipmi.model.ui import BasePage
-from klipmi.ui.openq1 import registerPages
+from klipmi.model.ui import BaseUi
 
 
 class Klipmi:
@@ -37,7 +36,7 @@ class Klipmi:
             level=logging.DEBUG,
             handlers=[logging.StreamHandler()],
         )
-        self.pages = registerPages()
+
         self.state: KlipmiState = KlipmiState()
         self.state.options = Config()
         self.state.display = TJC(
@@ -52,58 +51,38 @@ class Klipmi:
             self.onPrinterStatusUpdate,
             self.onFileListUpdate,
         )
-        self.backstack: List[BasePage] = []
-
-    def currentPage(self) -> BasePage:
-        return self.backstack[-1]
+        self.ui: BaseUi = ui.implementations[self.state.options.klipmi.ui](self.state)
 
     async def onDisplayEvent(self, type: EventType, data):
         if type == EventType.RECONNECTED:
             # Force update status on reconnect
             await self.onConnectionEvent(self.state.status)
         else:
-            logging.info("Passing event to page %s", self.currentPage().name)
-            asyncio.create_task(self.currentPage().onDisplayEvent(type, data))
+            asyncio.create_task(self.ui.onDisplayEvent(type, data))
 
     async def onConnectionEvent(self, status: PrinterState):
         logging.info("Conenction status: %s", status)
         self.state.status = status
         if status == PrinterState.NOT_READY:
-            await self.changePage("boot")
-            pass
+            self.ui.onNotReady()
         elif status == PrinterState.READY:
-            await self.changePage("main")
-            pass
+            self.ui.onReady()
         elif status == PrinterState.STOPPED:
-            pass
-        elif status == PrinterState.MOONRAKER_ERR:
-            pass
+            self.ui.onMoonrakerError()
         elif status == PrinterState.KLIPPER_ERR:
-            pass
+            self.ui.onKlipperError()
 
     async def onPrinterStatusUpdate(self, data: dict):
-        asyncio.create_task(self.currentPage().onPrinterStatusUpdate(data))
+        asyncio.create_task(self.ui.onPrinterStatusUpdate(data))
 
     async def onFileListUpdate(self, data: dict):
         self.state.fileList = data
-        asyncio.create_task(self.currentPage().onFileListUpdate(data))
-
-    async def changePage(self, page: str):
-        if len(self.backstack) >= 2 and self.backstack[-2].name == page:
-            self.backstack.pop()
-        else:
-            self.backstack.append(self.pages[page](self.state, self.changePage))
-
-        await self.state.display.wakeup()
-        await self.state.display.command(
-            "page %d" % self.currentPage().id, self.state.options.timeout
-        )
-        await self.currentPage().init()
+        asyncio.create_task(self.ui.onFileListUpdate(data))
 
     async def init(self):
         await self.state.display.connect()
         await self.state.display.wakeup()
-        await self.changePage("boot")
+        self.ui.onNotReady()
         await self.state.printer.connect()
 
     def start(self):

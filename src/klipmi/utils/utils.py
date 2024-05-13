@@ -26,3 +26,12 @@ def updateNestedDict(d, u):
         else:
             d[k] = v
     return d
+
+
+# Taken from https://stackoverflow.com/a/76301341
+class classproperty:
+    def __init__(self, func):
+        self.fget = func
+
+    def __get__(self, _, owner):
+        return self.fget(owner)

@@ -16,18 +16,24 @@ You should have received a copy of the GNU General Public License along with
 klipmi. If not, see <https://www.gnu.org/licenses/>. 
 """
 
-from klipmi.model.ui import BasePage
-from klipmi.utils import classproperty
+from klipmi.model.ui import BaseUi
+from . import BootPage
+from . import MainPage
 
 
-class BootPage(BasePage):
-    @classproperty
-    def name(cls) -> str:
-        return "boot"
+class OpenQ1UI(BaseUi):
+    def onNotReady(self):
+        self.changePage(BootPage)
 
-    @classproperty
-    def id(cls) -> int:
-        return 0
+    def onReady(self):
+        self.changePage(MainPage)
+        pass
 
-    async def init(self):
-        await self.state.display.set("version.val", 18, self.state.options.timeout)
+    def onStopped(self):
+        pass
+
+    def onMoonrakerError(self):
+        pass
+
+    def onKlipperError(self):
+        pass

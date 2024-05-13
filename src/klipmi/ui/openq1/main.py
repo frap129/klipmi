@@ -19,12 +19,17 @@ klipmi. If not, see <https://www.gnu.org/licenses/>.
 from nextion import EventType
 
 from klipmi.model.ui import BasePage
-from klipmi.utils import parseThumbnail
+from klipmi.utils import parseThumbnail, classproperty
 
 
 class MainPage(BasePage):
-    name = "main"
-    id = 15
+    @classproperty
+    def name(cls) -> str:
+        return "main"
+
+    @classproperty
+    def id(cls) -> int:
+        return 15
 
     # Element image id's
     _regular = 32
@@ -43,7 +48,6 @@ class MainPage(BasePage):
         )
 
     async def onDisplayEvent(self, type: EventType, data):
-        await super().onDisplayEvent(type, data)
         if type == EventType.TOUCH:
             if data.component_id == 0:
                 self.state.printer.togglePin("caselight")

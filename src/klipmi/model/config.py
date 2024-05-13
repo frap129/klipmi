@@ -27,6 +27,7 @@ TABLE_KLIPMI = "klipmi"
 TABLE_MOONRAKER = "moonraker"
 KEY_DEVICE = "device"
 KEY_BAUD = "baudrate"
+KEY_UI = "ui"
 KEY_HOST = "host"
 KEY_PORT = "port"
 KEY_API = "api-key"
@@ -60,6 +61,7 @@ def getConfigPath() -> str:
 class KlipmiConfig:
     device: str = ""
     baud: int = 115200
+    ui: str = ""
 
     def __init__(self, config: dict):
         try:
@@ -71,6 +73,11 @@ class KlipmiConfig:
             self.baud = config[KEY_BAUD]
         except Exception as e:
             logging.warning("baud not set in config, defaulting to %d" % self.baud)
+
+        try:
+            self.ui = config[KEY_UI]
+        except Exception as e:
+            logging.exception(e)
 
 
 class MoonrakerConfig:

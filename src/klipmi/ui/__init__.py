@@ -16,18 +16,8 @@ You should have received a copy of the GNU General Public License along with
 klipmi. If not, see <https://www.gnu.org/licenses/>. 
 """
 
-from klipmi.model.ui import BasePage
-from klipmi.utils import classproperty
+from typing import Dict, Type
+from klipmi.model.ui import BaseUi
+from klipmi.ui.openq1 import OpenQ1UI
 
-
-class BootPage(BasePage):
-    @classproperty
-    def name(cls) -> str:
-        return "boot"
-
-    @classproperty
-    def id(cls) -> int:
-        return 0
-
-    async def init(self):
-        await self.state.display.set("version.val", 18, self.state.options.timeout)
+implementations: Dict[str, Type[BaseUi]] = {"openq1": OpenQ1UI}
