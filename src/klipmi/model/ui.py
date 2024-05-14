@@ -85,7 +85,7 @@ class BasePage(ABC):
 
 
 class BaseUi(ABC):
-    _backstack: List[BasePage] = []
+    currentPage: BasePage | None = None
 
     @classproperty
     @abstractmethod
@@ -94,13 +94,6 @@ class BaseUi(ABC):
 
     def __init__(self, state: KlipmiState):
         self.state = state
-
-    @property
-    def currentPage(self) -> BasePage | None:
-        try:
-            return self._backstack[-1]
-        except:
-            return None
 
     @abstractmethod
     def onNotReady(self):
@@ -143,9 +136,5 @@ class BaseUi(ABC):
             await self.currentPage.init()
 
     def changePage(self, page: Type[BasePage]):
-        if len(self._backstack) >= 2 and self._backstack[-2].name == page.name:
-            self._backstack.pop()
-        else:
-            self._backstack.append(page(self.state, self.changePage))
-
+        self.currentPage = page(self.state, self.changePage)
         asyncio.create_task(self.__executePageChange())
