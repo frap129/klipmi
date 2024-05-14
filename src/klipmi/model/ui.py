@@ -55,7 +55,7 @@ class BasePage(ABC):
     async def onFileListUpdate(self, data: dict):
         pass
 
-    def changePage(self, page: str):
+    def changePage(self, page):
         self.changePageCallback(page)
 
     async def uploadThumbnail(
