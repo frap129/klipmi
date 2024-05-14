@@ -22,6 +22,18 @@ from klipmi.model.ui import BasePage
 from klipmi.utils import classproperty
 
 
+class OpenQ1Page(BasePage):
+    def handleNavBarButtons(self, component_id: int):
+        if component_id == 30:
+            self.changePage(MainPage)
+        elif component_id == 31:
+            self.changePage(MovePage)
+        elif component_id == 32:
+            self.changePage(FilelistPage)
+        elif component_id == 33:
+            self.changePage(SettingsPage)
+
+
 class BootPage(BasePage):
     @classproperty
     def name(cls) -> str:
@@ -35,7 +47,7 @@ class BootPage(BasePage):
         await self.state.display.set("version.val", 18, self.state.options.timeout)
 
 
-class MainPage(BasePage):
+class MainPage(OpenQ1Page):
     @classproperty
     def name(cls) -> str:
         return "main"
@@ -72,6 +84,9 @@ class MainPage(BasePage):
                 self.state.printer.togglePin("beep")
             elif data.component_id == 2:
                 self.state.printer.runGcode("M112")
+                self.changePage(ResetPage)
+            else:
+                self.handleNavBarButtons(data.component_id)
 
     async def onPrinterStatusUpdate(self, data: dict):
         await self.state.display.set("n0.val", int(data["extruder"]["temperature"]))
@@ -103,54 +118,145 @@ class MainPage(BasePage):
                 await self.state.display.command("vis cp0,1")
 
 
-class MovePage(BasePage):
+class MovePage(OpenQ1Page):
     @classproperty
     def name(cls) -> str:
         return "move"
 
     @classproperty
     def id(cls) -> int:
-        return 17
+        return 18
+
+    async def onDisplayEvent(self, type: EventType, data):
+        if type == EventType.TOUCH:
+            if data.component_id == 22:
+                self.changePage(FilamentPage)
+            else:
+                self.handleNavBarButtons(data.component_id)
 
 
-class FilelistPage(BasePage):
+class FilelistPage(OpenQ1Page):
     @classproperty
     def name(cls) -> str:
         return "filelist"
 
     @classproperty
     def id(cls) -> int:
-        return 3
+        return 4
+
+    async def onDisplayEvent(self, type: EventType, data):
+        if type == EventType.TOUCH:
+            self.handleNavBarButtons(data.component_id)
 
 
-class SettingsPage(BasePage):
+class SettingsPage(OpenQ1Page):
     @classproperty
     def name(cls) -> str:
         return "common_set"
 
     @classproperty
     def id(cls) -> int:
-        return 44
+        return 45
+
+    async def onDisplayEvent(self, type: EventType, data):
+        if type == EventType.TOUCH:
+            if data.component_id == 0:
+                self.changePage(LanguagePage)
+            if data.component_id == 22:
+                self.changePage(CalibrationPage)
+            else:
+                self.handleNavBarButtons(data.component_id)
 
 
-class FilamentPage(BasePage):
+class LanguagePage(OpenQ1Page):
+    @classproperty
+    def name(cls) -> str:
+        return "language"
+
+    @classproperty
+    def id(cls) -> int:
+        return 46
+
+    async def onDisplayEvent(self, type: EventType, data):
+        if type == EventType.TOUCH:
+            if data.component_id == 0:
+                self.changePage(SettingsPage)
+            else:
+                self.handleNavBarButtons(data.component_id)
+
+
+class FilamentPage(OpenQ1Page):
     @classproperty
     def name(cls) -> str:
         return "filament"
 
     @classproperty
     def id(cls) -> int:
-        return 61
+        return 62
+
+    # Element image id's
+    _regular = 176
+    _highlight = 177
+
+    # Thumbnail
+    filename = ""
+    metadata = {}
+
+    def isHeating(self, heaterData: dict) -> bool:
+        return heaterData["target"] > heaterData["temperature"]
+
+    async def setHighlight(self, element: str, highlight: bool):
+        await self.state.display.set(
+            "%s.picc" % element, self._highlight if highlight else self._regular
+        )
+
+    async def onDisplayEvent(self, type: EventType, data):
+        if type == EventType.TOUCH:
+            if data.component_id == 23:
+                self.changePage(MovePage)
+            else:
+                self.handleNavBarButtons(data.component_id)
+
+    async def onPrinterStatusUpdate(self, data: dict):
+        await self.state.display.set(
+            "t0.txt", str(int(data["extruder"]["temperature"]))
+        )
+        await self.state.display.set("n0.val", int(data["extruder"]["target"]))
+        await self.setHighlight("b2", self.isHeating(data["extruder"]))
+        await self.setHighlight("b0", self.isHeating(data["extruder"]))
+
+        await self.state.display.set(
+            "t1.txt", str(int(data["heater_bed"]["temperature"]))
+        )
+        await self.state.display.set("n1.val", int(data["heater_bed"]["target"]))
+        await self.setHighlight("b3", self.isHeating(data["heater_bed"]))
+        await self.setHighlight("b1", self.isHeating(data["heater_bed"]))
+
+        await self.state.display.set(
+            "t2.txt", str(int(data["heater_generic chamber"]["temperature"]))
+        )
+        await self.state.display.set(
+            "n2.val", int(data["heater_generic chamber"]["target"])
+        )
+        await self.setHighlight("b12", self.isHeating(data["heater_generic chamber"]))
+        await self.setHighlight("b13", self.isHeating(data["heater_generic chamber"]))
 
 
-class CalibrationPage(BasePage):
+class CalibrationPage(OpenQ1Page):
     @classproperty
     def name(cls) -> str:
         return "level_mode"
 
     @classproperty
     def id(cls) -> int:
-        return 26
+        return 27
+
+    async def onDisplayEvent(self, type: EventType, data):
+        if type == EventType.TOUCH:
+            if data.component_id == 23:
+                self.changePage(SettingsPage)
+            else:
+                self.handleNavBarButtons(data.component_id)
 
 
 class ResetPage(BasePage):
@@ -160,4 +266,4 @@ class ResetPage(BasePage):
 
     @classproperty
     def id(cls) -> int:
-        return 47
+        return 48

@@ -58,4 +58,5 @@ class OpenQ1UI(BaseUi):
         pass
 
     def onKlipperError(self):
+        self.changePage(ResetPage)
         pass
