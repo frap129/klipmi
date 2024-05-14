@@ -22,6 +22,19 @@ from klipmi.model.ui import BasePage
 from klipmi.utils import classproperty
 
 
+class BootPage(BasePage):
+    @classproperty
+    def name(cls) -> str:
+        return "logo"
+
+    @classproperty
+    def id(cls) -> int:
+        return 0
+
+    async def init(self):
+        await self.state.display.set("version.val", 18, self.state.options.timeout)
+
+
 class MainPage(BasePage):
     @classproperty
     def name(cls) -> str:
@@ -88,3 +101,63 @@ class MainPage(BasePage):
                     "cp0", 160, "4d4d4d", self.filename, self.metadata
                 )
                 await self.state.display.command("vis cp0,1")
+
+
+class MovePage(BasePage):
+    @classproperty
+    def name(cls) -> str:
+        return "move"
+
+    @classproperty
+    def id(cls) -> int:
+        return 17
+
+
+class FilelistPage(BasePage):
+    @classproperty
+    def name(cls) -> str:
+        return "filelist"
+
+    @classproperty
+    def id(cls) -> int:
+        return 3
+
+
+class SettingsPage(BasePage):
+    @classproperty
+    def name(cls) -> str:
+        return "common_set"
+
+    @classproperty
+    def id(cls) -> int:
+        return 44
+
+
+class FilamentPage(BasePage):
+    @classproperty
+    def name(cls) -> str:
+        return "filament"
+
+    @classproperty
+    def id(cls) -> int:
+        return 61
+
+
+class CalibrationPage(BasePage):
+    @classproperty
+    def name(cls) -> str:
+        return "level_mode"
+
+    @classproperty
+    def id(cls) -> int:
+        return 26
+
+
+class ResetPage(BasePage):
+    @classproperty
+    def name(cls) -> str:
+        return "reset"
+
+    @classproperty
+    def id(cls) -> int:
+        return 47

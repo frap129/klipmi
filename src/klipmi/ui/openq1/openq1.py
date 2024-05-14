@@ -19,8 +19,7 @@ klipmi. If not, see <https://www.gnu.org/licenses/>.
 from typing import Dict, List
 from klipmi.model.ui import BaseUi
 from klipmi.utils.utils import classproperty
-from . import BootPage
-from . import MainPage
+from .pages import *
 
 
 class OpenQ1UI(BaseUi):
