@@ -23,7 +23,7 @@ from klipmi.utils import classproperty
 class BootPage(BasePage):
     @classproperty
     def name(cls) -> str:
-        return "boot"
+        return "logo"
 
     @classproperty
     def id(cls) -> int:
