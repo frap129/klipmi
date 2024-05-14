@@ -29,11 +29,11 @@ class MainPage(BasePage):
 
     @classproperty
     def id(cls) -> int:
-        return 2
+        return 3
 
     # Element image id's
-    _regular = 25
-    _highlight = 26
+    _regular = 32
+    _highlight = 33
 
     # Thumbnail
     filename = ""
@@ -48,7 +48,7 @@ class MainPage(BasePage):
         )
 
     async def init(self):
-        await self.state.display.set("b6.picc", 26)
+        await self.state.display.set("b6.picc", 31)
 
     async def onDisplayEvent(self, type: EventType, data):
         if type == EventType.TOUCH:
