@@ -82,8 +82,7 @@ class MainPage(OpenQ1Page):
                 self.state.printer.togglePin("sound")
                 self.state.printer.togglePin("beep")
             elif data.component_id == 2:
-                self.state.printer.runGcode("M112")
-                self.changePage(ResetPage)
+                self.state.printer.emergencyStop()
             else:
                 self.handleNavBarButtons(data.component_id)
 
