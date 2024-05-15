@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License along with
 klipmi. If not, see <https://www.gnu.org/licenses/>. 
 """
 
+from PIL.Image import init
 from nextion import EventType
 
 from klipmi.model.ui import BasePage
@@ -127,6 +128,17 @@ class MovePage(OpenQ1Page):
                 self.changePage(FilamentPage)
             else:
                 self.handleNavBarButtons(data.component_id)
+
+    async def onPrinterStatusUpdate(self, data: dict):
+        await self.state.display.set(
+            "t0.txt", f'{data["motion_report"]["live_position"][0]:.1f}'
+        )
+        await self.state.display.set(
+            "t1.txt", f'{data["motion_report"]["live_position"][1]:.1f}'
+        )
+        await self.state.display.set(
+            "t2.txt", f'{data["motion_report"]["live_position"][2]:.1f}'
+        )
 
 
 class FilelistPage(OpenQ1Page):
