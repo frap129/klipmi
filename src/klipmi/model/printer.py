@@ -30,7 +30,7 @@ from moonraker_api.websockets.websocketclient import (
     WEBSOCKET_CONNECTION_TIMEOUT,
 )
 from nextion.client import asyncio
-from typing import Callable, Dict, List, Literal
+from typing import Callable, Coroutine, Dict, List, Literal
 from urllib.request import pathname2url
 
 from klipmi.model.config import MoonrakerConfig
@@ -85,16 +85,65 @@ class Printer(MoonrakerListener):
         await self.__updateState(PrinterState.STOPPED)
         await self.client.disconnect()
 
-    def runGcode(self, gcode: str):
-        asyncio.create_task(
-            self.client.call_method("printer.gcode.script", script=gcode)
-        )
+    async def state_changed(self, state: str | Literal[120]):
+        tasks: List[Coroutine] = []
+        printerStatus = PrinterState.NOT_READY
+        if state == WEBSOCKET_STATE_CONNECTING:
+            pass
+        elif state == WEBSOCKET_STATE_CONNECTED:
+            tasks.append(self.__subscribe())
+            tasks.append(self.__updateKlippyStatus())
+        elif state == WEBSOCKET_STATE_STOPPING:
+            pass
+        elif state == WEBSOCKET_STATE_STOPPED:
+            printerStatus = PrinterState.STOPPED
+        elif state == WEBSOCKET_CONNECTION_TIMEOUT:
+            printerStatus = PrinterState.MOONRAKER_ERR
 
-    def togglePin(self, pin: str):
-        self.runGcode(
-            "SET_PIN PIN=%s VALUE=%d"
-            % (pin, 1 - self.status["output_pin %s" % pin]["value"])
-        )
+        tasks.append(self.__updateState(printerStatus))
+        asyncio.gather(*tasks)
+
+    async def on_notification(self, method: str, data: list):
+        tasks: List[Coroutine] = []
+        if method == Notifications.KLIPPY_READY:
+            tasks.append(self.__updatePrinterStatus())
+            tasks.append(self.__subscribe())
+            tasks.append(self.__updateKlippyStatus())
+            tasks.append(self.__updateState(PrinterState.READY))
+        elif method == Notifications.KLIPPY_SHUTDOWN:
+            tasks.append(self.__updateState(PrinterState.KLIPPER_ERR))
+        elif method == Notifications.KLIPPY_DISCONNECTED:
+            tasks.append(self.__updateState(PrinterState.KLIPPER_ERR))
+        elif method == Notifications.STATUS_UPDATE:
+            updateNestedDict(self.status, data[0])
+            tasks.append(self.printerCallback(self.status))
+        elif method == Notifications.FILES_CHANGED:
+            self.files = data[0]
+            tasks.append(self.filesCallback(self.files))
+        asyncio.gather(*tasks)
+
+    async def on_exception(self, exception: type | BaseException) -> None:
+        """TODO"""
+
+    async def __subscribe(self):
+        await self.client.call_method("printer.objects.subscribe", objects=self.objects)
+
+    async def __updateKlippyStatus(self):
+        status = await self.client.get_klipper_status()
+        if status == "ready":
+            await self.__updatePrinterStatus()
+            await self.stateCallback(PrinterState.READY)
+        elif status == "shutdown" or status == "disconnected":
+            await self.stateCallback(PrinterState.KLIPPER_ERR)
+
+    async def __updatePrinterStatus(self):
+        self.status = (
+            await self.client.call_method("printer.objects.query", objects=self.objects)
+        )["status"]
+
+    async def __updateState(self, state: PrinterState):
+        self.state = state
+        await self.stateCallback(state)
 
     async def getMetadata(self, filename):
         metadata = await self.client.call_method(
@@ -102,22 +151,20 @@ class Printer(MoonrakerListener):
         )
         return metadata
 
-    async def getThumbnail(self, size: int, filename: str, metadata: dict = {}):
-        if metadata == {}:
-            metadata = await self.getMetadata(filename)
-        best_thumbnail = {}
-        for thumbnail in metadata["thumbnails"]:
-            if thumbnail["width"] == size:
-                best_thumbnail = thumbnail
+    async def getThumbnail(self, size: int, filename: str):
+        thumbnailsList = await self.client.call_method(
+            "server.files.thumbnails", filename=filename
+        )
+
+        thumbnail = {}
+        for item in thumbnailsList:
+            if item["width"] == size:
+                thumbnail = item
                 break
-            if best_thumbnail == {} or thumbnail["width"] > best_thumbnail["width"]:
-                best_thumbnail = thumbnail
+            if thumbnail == {} or item["width"] > item["width"]:
+                thumbnail = item
 
-        path = "/".join(filename.split("/")[:-1])
-        if path != "":
-            path = path + "/"
-        path += best_thumbnail["relative_path"]
-
+        path = thumbnail["thumbnail_path"]
         host = self.options.host
         if "http" not in host:
             host = "http://%s" % host
@@ -128,58 +175,36 @@ class Printer(MoonrakerListener):
         )
         return Image.open(io.BytesIO(img.content))
 
-    async def __subscribe(self):
-        await self.client.call_method("printer.objects.subscribe", objects=self.objects)
+    def runGcode(self, gcode: str):
+        asyncio.create_task(
+            self.client.call_method("printer.gcode.script", script=gcode)
+        )
 
-    async def __updateKlippyStatus(self):
-        status = await self.client.get_klipper_status()
-        if status == "ready":
-            self.status = await self.__getPrinterState()
-            await self.stateCallback(PrinterState.READY)
-        elif status == "shutdown" or status == "disconnected":
-            await self.stateCallback(PrinterState.KLIPPER_ERR)
+    def emergencyStop(self):
+        asyncio.create_task(self.client.call_method("printer.emergency_stop"))
 
-    async def __getPrinterState(self) -> dict:
-        return (
-            await self.client.call_method("printer.objects.query", objects=self.objects)
-        )["status"]
+    def restart(self):
+        asyncio.create_task(self.client.call_method("printer.restart"))
 
-    async def __updateState(self, state: PrinterState):
-        self.state = state
-        await self.stateCallback(state)
+    def firmwareRestart(self):
+        asyncio.create_task(self.client.call_method("printer.firmware_restart"))
 
-    async def state_changed(self, state: str | Literal[120]):
-        printerStatus = PrinterState.NOT_READY
-        if state == WEBSOCKET_STATE_CONNECTING:
-            pass
-        elif state == WEBSOCKET_STATE_CONNECTED:
-            await self.__subscribe()
-            asyncio.create_task(self.__updateKlippyStatus())
-        elif state == WEBSOCKET_STATE_STOPPING:
-            pass
-        elif state == WEBSOCKET_STATE_STOPPED:
-            printerStatus = PrinterState.STOPPED
-        elif state == WEBSOCKET_CONNECTION_TIMEOUT:
-            printerStatus = PrinterState.MOONRAKER_ERR
+    def startPrint(self, filename: str):
+        asyncio.create_task(
+            self.client.call_method("printer.print.start", filename=filename)
+        )
 
-        await self.__updateState(printerStatus)
+    def pausePrint(self):
+        asyncio.create_task(self.client.call_method("printer.print.pause"))
 
-    async def on_notification(self, method: str, data: list):
-        if method == Notifications.KLIPPY_READY:
-            self.status = await self.__getPrinterState()
-            await self.__subscribe()
-            asyncio.create_task(self.__updateKlippyStatus())
-            await self.__updateState(PrinterState.READY)
-        elif method == Notifications.KLIPPY_SHUTDOWN:
-            await self.__updateState(PrinterState.KLIPPER_ERR)
-        elif method == Notifications.KLIPPY_DISCONNECTED:
-            await self.__updateState(PrinterState.KLIPPER_ERR)
-        elif method == Notifications.STATUS_UPDATE:
-            updateNestedDict(self.status, data[0])
-            await self.printerCallback(self.status)
-        elif method == Notifications.FILES_CHANGED:
-            self.files = data[0]
-            await self.filesCallback(self.files)
+    def resumePrint(self):
+        asyncio.create_task(self.client.call_method("printer.print.resume"))
 
-    async def on_exception(self, exception: type | BaseException) -> None:
-        """TODO"""
+    def cancelPrint(self):
+        asyncio.create_task(self.client.call_method("printer.print.cancel"))
+
+    def togglePin(self, pin: str):
+        self.runGcode(
+            "SET_PIN PIN=%s VALUE=%d"
+            % (pin, 1 - self.status["output_pin %s" % pin]["value"])
+        )
