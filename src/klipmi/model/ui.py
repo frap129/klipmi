@@ -22,6 +22,7 @@ from collections.abc import Callable
 from typing import Dict, List, Type
 
 from nextion import EventType
+from nextion.client import logging
 
 from klipmi.model.state import KlipmiState
 from klipmi.utils import classproperty
@@ -59,10 +60,10 @@ class BasePage(ABC):
         self.changePageCallback(page)
 
     async def uploadThumbnail(
-        self, element: str, size: int, bgColor: str, filename: str, metadata: dict = {}
+        self, element: str, size: int, bgColor: str, filename: str
     ):
         thumbnail = parseThumbnail(
-            await self.state.printer.getThumbnail(size, filename, metadata),
+            await self.state.printer.getThumbnail(size, filename),
             size,
             size,
             bgColor,
@@ -116,6 +117,7 @@ class BaseUi(ABC):
         pass
 
     async def onDisplayEvent(self, type: EventType, data):
+        logging.info("onDisplayEvent: EventType: %s, data: %s" % (type.name, str(data)))
         if self.currentPage is not None:
             await self.currentPage.onDisplayEvent(type, data)
 

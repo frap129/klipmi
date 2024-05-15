@@ -62,7 +62,6 @@ class MainPage(OpenQ1Page):
 
     # Thumbnail
     filename = ""
-    metadata = {}
 
     def isHeating(self, heaterData: dict) -> bool:
         return heaterData["target"] > heaterData["temperature"]
@@ -110,11 +109,7 @@ class MainPage(OpenQ1Page):
         else:
             if filename != self.filename:
                 self.filename = filename
-                if self.metadata == {}:
-                    self.metadata = await self.state.printer.getMetadata(self.filename)
-                await self.uploadThumbnail(
-                    "cp0", 160, "4d4d4d", self.filename, self.metadata
-                )
+                await self.uploadThumbnail("cp0", 160, "4d4d4d", self.filename)
                 await self.state.display.command("vis cp0,1")
 
 
@@ -197,10 +192,6 @@ class FilamentPage(OpenQ1Page):
     # Element image id's
     _regular = 176
     _highlight = 177
-
-    # Thumbnail
-    filename = ""
-    metadata = {}
 
     def isHeating(self, heaterData: dict) -> bool:
         return heaterData["target"] > heaterData["temperature"]
