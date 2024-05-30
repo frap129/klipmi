@@ -1,0 +1,17 @@
+[Unit]
+Description=klipmi TJC-Klipper display service
+Documentation=https://github.com/frap129/klipmi
+After=klipper.service moonraker.service
+Wants=udev.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=simple
+User=%USER%
+RemainAfterExit=yes
+WorkingDirectory=%KLIPMI_DIR%
+ExecStart=%KLIPMI_DIR%/.venv/bin/python src/main.py
+Restart=always
+RestartSec=10
