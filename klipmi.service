@@ -12,6 +12,7 @@ Type=simple
 User=%USER%
 RemainAfterExit=yes
 WorkingDirectory=%KLIPMI_DIR%
+ExecStartPre=/usr/bin/env bash -c 'sleep 10'
 ExecStart=%KLIPMI_DIR%/.venv/bin/python src/main.py
 Restart=always
 RestartSec=10
