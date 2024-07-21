@@ -36,9 +36,23 @@ To install `klipmi`, follow these steps:
 
 3. Configure `klipmi` by editing the example configuration file:
     ```bash
-    cp klpmi.toml.example ~/printer_data/config/klpmi.toml
+    cp klipmi.toml.example ~/printer_data/config/klpmi.toml
     ```
+4. Get moonraker API key
+    ```bash
+    http://IP OF PRINTER/access/api_key
+    ```
+## Instal Touch Screen firmware
 
+1. Stop `klipmi`
+    ```bash
+    systemctl stop klipmi
+    ```
+2. Install TFT Firmware
+    ```bash
+    .venv/bin/nextion-fw-upload -b 115200 -ub 921600 /dev/ttyS1 ~/klipmi/hmi/openq1/Q1_UI.tft
+    ```
+    
 ## Usage
 
 To start the service, use the following command:
@@ -49,6 +63,24 @@ sudo systemctl start klipmi.service
 To enable the service to start on boot:
 ```bash
 sudo systemctl enable klipmi.service
+```
+
+If it not working check log
+
+```bash
+sudo journalctl -xeu klipmi
+```
+## Errors
+If you see this error No such file or directory: '/root/printer_data/config/klipmi.toml' change the service user to mks
+
+```bash
+sudo nano /etc/systemd/system/klipmi.service
+```
+
+Then restart
+
+```bash
+sudo systemctl restart klipmi
 ```
 
 ## Contributing
