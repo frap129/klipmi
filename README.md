@@ -36,7 +36,7 @@ To install `klipmi`, follow these steps:
 
 3. Configure `klipmi` by editing the example configuration file:
     ```bash
-    cp klpmi.toml.example ~/printer_data/config/klpmi.toml
+    cp klipmi.toml.example ~/printer_data/config/klipmi.toml
     ```
 
 ## Usage
